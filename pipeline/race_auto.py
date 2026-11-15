@@ -49,6 +49,90 @@ BANK = {
 }
 
 
+def _add(slug, ind, t1, t2, fmt, more, what, src, min_y=1960):
+    BANK[slug] = dict(ind=ind, t1=t1, t2=t2, fmt=fmt, more=more, what=what, src=src, min_y=min_y)
+
+
+BANK["remittances"]["ind"] = "BX.TRF.PWKR.CD.DT"  # corrected World Bank code
+_add("remitpaid", "BM.TRF.PWKR.CD.DT", "TOP 10 COUNTRIES THAT", "SEND MOST MONEY ABROAD", "usd", "more money sent abroad", "money sent abroad",
+     "personal remittances paid, current US dollars", 1980)
+_add("ictexp", "BX.GSR.CCIS.CD", "TOP 10 BIGGEST", "IT SERVICE EXPORTERS", "usd", "more IT service exports", "IT service exports",
+     "ICT service exports, current US dollars", 1995)
+_add("royalty", "BX.GSR.ROYL.CD", "TOP 10 COUNTRIES THAT EARN MOST", "FROM PATENTS AND BRANDS", "usd", "more patent and brand income", "patent and brand income",
+     "intellectual property receipts, current US dollars", 2000)
+_add("airfreight", "IS.AIR.GOOD.MT.K1", "TOP 10 BIGGEST", "AIR CARGO COUNTRIES", "num", "more air cargo (million ton-km)", "air cargo",
+     "air freight, million ton-km", 1970)
+_add("water", "ER.H2O.FWTL.K3", "TOP 10 COUNTRIES THAT", "USE MOST FRESH WATER", "dec1", "more water used (billion cubic meters)", "fresh water use",
+     "annual freshwater withdrawals, billion cubic meters", 1987)
+_add("bigcity", "EN.URB.LCTY", "TOP 10 COUNTRIES WITH", "THE BIGGEST MEGACITIES", "count", "more people in the biggest city", "megacity size",
+     "population in the largest city", 1960)
+_add("mcity", "EN.URB.MCTY", "TOP 10 COUNTRIES WITH MOST", "BIG-CITY PEOPLE (1M+)", "count", "more people in cities over 1 million", "big-city population",
+     "population in cities of over 1 million", 1960)
+_add("servexp", "BX.GSR.NFSV.CD", "TOP 10 BIGGEST", "SERVICE EXPORTERS", "usd", "more service exports", "service exports",
+     "service exports (balance of payments), current US dollars", 1977)
+_add("servimp", "BM.GSR.NFSV.CD", "TOP 10 BIGGEST", "SERVICE IMPORTERS", "usd", "more service imports", "service imports",
+     "service imports (balance of payments), current US dollars", 1977)
+_add("rural", "SP.RUR.TOTL", "TOP 10 COUNTRIES WITH MOST", "VILLAGE PEOPLE", "count", "more people in rural areas", "rural population", "rural population", 1960)
+_add("pop65", "SP.POP.65UP.TO", "TOP 10 COUNTRIES WITH MOST", "OLDER PEOPLE (65+)", "count", "more people aged 65 and above", "older people", "population aged 65 and above", 1960)
+_add("kids", "SP.POP.0014.TO", "TOP 10 COUNTRIES WITH MOST", "CHILDREN (0-14)", "count", "more children aged 0 to 14", "children", "population aged 0 to 14", 1960)
+_add("workage", "SP.POP.1564.TO", "TOP 10 COUNTRIES WITH MOST", "WORKING-AGE PEOPLE", "count", "more people aged 15 to 64", "working-age people", "population aged 15 to 64", 1960)
+_add("broadband", "IT.NET.BBND", "TOP 10 COUNTRIES BY", "BROADBAND INTERNET LINES", "num", "more broadband subscriptions", "broadband internet",
+     "fixed broadband subscriptions", 2002)
+_add("landlines", "IT.MLT.MAIN", "TOP 10 COUNTRIES BY", "FIXED PHONE LINES", "num", "more fixed phone lines", "fixed phone lines", "fixed telephone subscriptions", 1960)
+_add("airpax", "IS.AIR.PSGR", "TOP 10 COUNTRIES BY", "AIR PASSENGERS", "num", "more air passengers", "air passengers", "air passengers carried", 1970)
+_add("patents", "IP.PAT.RESD", "TOP 10 COUNTRIES BY", "PATENT APPLICATIONS", "num", "more patent applications", "patent applications",
+     "patent applications by residents", 1992)
+_add("cereal", "AG.PRD.CREL.MT", "TOP 10 BIGGEST", "GRAIN PRODUCERS", "num", "more grain (metric tons)", "grain production", "cereal production, metric tons", 1961)
+_add("agland", "AG.LND.AGRI.K2", "TOP 10 COUNTRIES WITH", "THE MOST FARMLAND", "num", "more farmland (square km)", "farmland", "agricultural land, square km", 1961)
+_add("forest", "AG.LND.FRST.K2", "TOP 10 COUNTRIES WITH", "THE MOST FOREST", "num", "more forest (square km)", "forest area", "forest area, square km", 1990)
+_add("fish", "ER.FSH.PROD.MT", "TOP 10 BIGGEST", "FISH PRODUCERS", "num", "more fish (metric tons)", "fish production", "total fisheries production, metric tons", 1960)
+_add("aqua", "ER.FSH.AQUA.MT", "TOP 10 BIGGEST", "FISH FARMING COUNTRIES", "num", "more farmed fish (metric tons)", "fish farming", "aquaculture production, metric tons", 1976)
+_add("ghg", "EN.GHG.ALL.MT.CE.AR5", "TOP 10 COUNTRIES BY", "GREENHOUSE GASES", "mt", "more greenhouse gas (Gt = billion tonnes)", "greenhouse gas emissions",
+     "total greenhouse gas emissions (million tonnes CO2 equivalent)", 1970)
+_add("methane", "EN.GHG.CH4.MT.CE.AR5", "TOP 10 COUNTRIES BY", "METHANE EMISSIONS", "mt", "more methane (Mt = million tonnes CO2 equivalent)", "methane emissions",
+     "methane emissions (million tonnes CO2 equivalent)", 1970)
+_add("n2o", "EN.GHG.N2O.MT.CE.AR5", "TOP 10 COUNTRIES BY", "NITROUS OXIDE EMISSIONS", "mt", "more nitrous oxide (Mt = million tonnes CO2 equivalent)",
+     "nitrous oxide emissions", "nitrous oxide emissions (million tonnes CO2 equivalent)", 1970)
+_add("services", "NV.SRV.TOTL.CD", "TOP 10 BIGGEST", "SERVICE ECONOMIES", "usd", "more service-sector output", "service sector output",
+     "services value added, current US dollars", 1978)
+_add("industry", "NV.IND.TOTL.CD", "TOP 10 BIGGEST", "INDUSTRIAL ECONOMIES", "usd", "more industry output", "industry output",
+     "industry value added, current US dollars", 1975)
+_add("fdiin", "BX.KLT.DINV.CD.WD", "TOP 10 COUNTRIES THAT", "ATTRACT MOST INVESTMENT", "usd", "more foreign investment received", "foreign investment received",
+     "foreign direct investment, net inflows, current US dollars", 1970)
+_add("fdiout", "BM.KLT.DINV.CD.WD", "TOP 10 COUNTRIES THAT", "INVEST MOST ABROAD", "usd", "more investment abroad", "investment abroad",
+     "foreign direct investment, net outflows, current US dollars", 1985)
+_add("gdpppp", "NY.GDP.MKTP.PP.CD", "TOP 10 BIGGEST ECONOMIES", "BY BUYING POWER (PPP)", "usd", "a bigger economy by buying power", "economy size by buying power",
+     "GDP, PPP, current international dollars", 1990)
+_add("extdebt", "DT.DOD.DECT.CD", "TOP 10 COUNTRIES WITH", "THE MOST FOREIGN DEBT", "usd", "more foreign debt", "foreign debt",
+     "external debt stocks of developing countries, current US dollars", 1975)
+_add("debtservice", "DT.TDS.DECT.CD", "TOP 10 COUNTRIES THAT", "PAY MOST DEBT BACK", "usd", "more debt payments", "debt payments",
+     "debt service on external debt of developing countries, current US dollars", 1976)
+_add("hightech", "TX.VAL.TECH.CD", "TOP 10 BIGGEST", "HIGH-TECH EXPORTERS", "usd", "more high-tech exports", "high-tech exports",
+     "high-technology exports, current US dollars", 2008)
+_add("gdppc", "NY.GDP.PCAP.CD", "TOP 10 RICHEST COUNTRIES", "PER PERSON", "usdpc", "more income per person (US dollars)", "income per person",
+     "GDP per capita, current US dollars", 1960)
+_add("lifeexp", "SP.DYN.LE00.IN", "TOP 10 COUNTRIES WITH", "THE LONGEST LIFE", "dec1", "longer life (years)", "life expectancy",
+     "life expectancy at birth, years", 1960)
+_add("primary", "SE.PRM.ENRL", "TOP 10 COUNTRIES WITH MOST", "PRIMARY SCHOOL KIDS", "num", "more primary school students", "primary school students",
+     "primary school enrollment", 1971)
+_add("secondary", "SE.SEC.ENRL", "TOP 10 COUNTRIES WITH MOST", "HIGH SCHOOL STUDENTS", "num", "more secondary school students", "high school students",
+     "secondary school enrollment", 1971)
+_add("journals", "IP.JRN.ARTC.SC", "TOP 10 COUNTRIES BY", "SCIENCE ARTICLES", "num", "more science articles", "science articles",
+     "scientific and technical journal articles", 1996)
+_add("armsimp", "MS.MIL.MPRT.KD", "TOP 10 BIGGEST", "ARMS BUYERS", "num", "more weapons imports (SIPRI units)", "weapons imports",
+     "arms imports, SIPRI trend indicator values", 1960)
+_add("milpct", "MS.MIL.XPND.GD.ZS", "TOP 10 COUNTRIES THAT", "SPEND MOST ON ARMY (% GDP)", "pct", "a bigger share of income spent on the army", "army spending share",
+     "military expenditure, percent of GDP", 1968)
+_add("fertility", "SP.DYN.TFRT.IN", "TOP 10 COUNTRIES WITH", "MOST BABIES PER WOMAN", "dec1", "more babies per woman", "babies per woman",
+     "fertility rate, births per woman", 1960)
+_add("elecpc", "EG.USE.ELEC.KH.PC", "TOP 10 COUNTRIES BY", "ELECTRICITY PER PERSON", "num", "more electricity per person (kWh)", "electricity use per person",
+     "electric power consumption per capita, kWh", 1990)
+_add("co2pc", "EN.GHG.CO2.PC.CE.AR5", "TOP 10 COUNTRIES BY", "CO2 PER PERSON", "dec1", "more CO2 per person (tonnes)", "CO2 per person",
+     "CO2 emissions per person, tonnes", 1970)
+_add("healthpc", "SH.XPD.CHEX.PC.CD", "TOP 10 COUNTRIES BY", "HEALTH SPENDING PER PERSON", "usdpc", "more health spending per person (US dollars)",
+     "health spending per person", "current health expenditure per capita, current US dollars", 2000)
+
+
 def build(slug, target=82.0):
     spec = BANK[slug]
     path = os.path.join(RT.SER, slug + ".json")
@@ -164,6 +248,16 @@ def fmt_fn(kind):
             return f"${x / 1e12:,.1f} trillion" if x >= 1e12 else f"${x / 1e9:,.0f} billion"
         if kind == "mt":
             return f"{x / 1e3:,.1f} billion tonnes" if x >= 1e3 else f"{x:,.0f} million tonnes"
+        if kind == "usdpc":
+            return f"${x:,.0f}"
+        if kind == "dec1":
+            return f"{x:.1f}"
+        if kind == "dec2":
+            return f"{x:.2f}"
+        if kind == "pct":
+            return f"{x:.1f}%"
+        if kind == "num":
+            return f"{x / 1e9:.2f} billion" if x >= 1e9 else (f"{x / 1e6:.1f} million" if x >= 1e6 else (f"{x / 1e3:.0f} thousand" if x >= 1e4 else f"{x:,.0f}"))
         return f"{x:,.0f}"
     return f
 

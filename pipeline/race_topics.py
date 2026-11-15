@@ -16,7 +16,13 @@ SER = os.path.join(ROOT, "data", "series")
 OUT = os.path.join(ROOT, "data", "race")
 SHORT = {"Russian Federation": "Russia", "United States": "USA", "United Kingdom": "UK", "Korea, Rep.": "South Korea",
          "Egypt, Arab Rep.": "Egypt", "Iran, Islamic Rep.": "Iran", "Turkiye": "Turkey", "Congo, Dem. Rep.": "DR Congo",
-         "Netherlands": "Netherlands"}
+         "Netherlands": "Netherlands", "Hong Kong SAR, China": "Hong Kong", "Macao SAR, China": "Macao", "Somalia, Fed. Rep.": "Somalia",
+         "Korea, Dem. People's Rep.": "North Korea", "Venezuela, RB": "Venezuela", "Bahamas, The": "Bahamas", "Gambia, The": "Gambia",
+         "Yemen, Rep.": "Yemen", "Micronesia, Fed. Sts.": "Micronesia", "Lao PDR": "Laos", "Syrian Arab Republic": "Syria",
+         "Kyrgyz Republic": "Kyrgyzstan", "Slovak Republic": "Slovakia", "Congo, Rep.": "Congo", "Sint Maarten (Dutch part)": "Sint Maarten",
+         "Virgin Islands (U.S.)": "US Virgin Islands", "Naoero": "Nauru", "Cote d'Ivoire": "Ivory Coast", "Czechia": "Czechia",
+         "St. Kitts and Nevis": "St Kitts", "St. Lucia": "St Lucia", "Trinidad and Tobago": "Trinidad"}
+EXCLUDE = {"CHI"}  # Channel Islands: no flag, not a country people know
 INDICATORS = {"pop": "SP.POP.TOTL", "gdp": "NY.GDP.MKTP.CD"}
 
 
@@ -40,7 +46,7 @@ def fetch(slug):
 class DS:
     def __init__(self, slug):
         J = json.load(open(os.path.join(SER, slug + ".json")))
-        self.d = {k: {int(y): v for y, v in s.items()} for k, s in J["data"].items()}
+        self.d = {k: {int(y): v for y, v in s.items()} for k, s in J["data"].items() if k not in EXCLUDE}
         self.names = J["names"]
         self.updated = J["updated"]
         self.y0 = 1960

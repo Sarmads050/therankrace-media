@@ -27,13 +27,13 @@ os.chdir(ROOT)
 import race_auto as RA  # noqa
 import race_topics as RT  # noqa
 import flags as FL  # noqa
+import pick as PK  # noqa
 from common import FFMPEG  # noqa
 
 REPO = os.environ.get("GITHUB_REPOSITORY", "Sarmads050/therankrace-media")
 PKT = dt.timezone(dt.timedelta(hours=5))
 EPOCH = dt.date(2026, 11, 16)  # first cloud day
-ORDER = ["mobile", "co2", "military", "exports", "imports", "manufacturing", "agriculture", "consumption", "reserves", "urban",
-         "aid", "labor", "pop", "gdp"]
+ORDER = [s for s in RA.BANK if s not in ("tourists", "tourism_money")]  # every topic; each is used exactly once (see used_topics)
 PHRASE = {"pop": "population", "gdp": "economy size"}
 TAGS = {"pop": "#population #worldpopulation", "gdp": "#gdp #economy #worldeconomy", "mobile": "#mobile #smartphones #technology",
         "co2": "#climate #co2 #environment", "military": "#military #defense #geopolitics", "exports": "#exports #trade #economy",
@@ -210,6 +210,45 @@ def schedule(text, url, due):
     return d["post"]
 
 
+def used_topics():
+    """A topic is used once a release '<slug>-race-<date>' exists (the release is deleted again if scheduling fails)."""
+    out = subprocess.run(["gh", "release", "list", "-R", REPO, "-L", "1000", "--json", "tagName", "--jq", ".[].tagName"],
+                         capture_output=True, text=True, check=True).stdout.split()  # newest first
+    recent = []
+    for t in out:
+        m = re.match(r"^(.+)-race-\d{4}-\d{2}-\d{2}$", t)
+        if m and m.group(1) not in recent:
+            recent.append(m.group(1))
+    return recent
+
+
+def post_near(due):
+    """id of a scheduled Buffer post within 90 s of `due`, else None"""
+    ch, org = channel_id()
+    r = gql('query { posts(first: 100, input: {organizationId: "%s", filter: {status: [scheduled], channelIds: ["%s"]}}) '
+            '{ edges { node { id dueAt } } } }' % (org, ch))
+    for e in r["data"]["posts"]["edges"]:
+        d0 = dt.datetime.fromisoformat(e["node"]["dueAt"].replace("Z", "+00:00"))
+        if abs((d0 - due).total_seconds()) < 90:
+            return e["node"]["id"]
+    return None
+
+
+def due_for(today, slot):
+    now = dt.datetime.now(PKT)
+    due = dt.datetime.combine(today, dt.time(SLOT_HOUR[slot], 0), PKT)
+    if due < now + dt.timedelta(minutes=20):  # late run: next day, same hour
+        due += dt.timedelta(days=1)
+    return due
+
+
+def summary(md):
+    p = os.environ.get("GITHUB_STEP_SUMMARY")
+    if p:
+        with open(p, "a", encoding="utf-8") as f:
+            f.write(md)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--slot", type=int, required=True, choices=[1, 2])
@@ -218,9 +257,41 @@ def main():
     ap.add_argument("--topic", help="force a topic slug (testing)")
     a = ap.parse_args()
     today = dt.datetime.now(PKT).date() if not a.date else dt.date.fromisoformat(a.date)
-    day = (today - EPOCH).days
-    base = max(0, day) * 2 + (a.slot - 1)
-    tries = [a.topic] if a.topic else [ORDER[(base + 2 * j) % len(ORDER)] for j in range(8)]
+    due = due_for(today, a.slot)
+    if not a.dry_run and not a.topic:  # this slot is already filled (e.g. a manual test run): nothing to do, nothing burnt
+        pid = post_near(due)
+        if pid:
+            log(f"slot {a.slot}: a post already exists at {due} ({pid}); nothing to do")
+            summary(f"### Slot {a.slot}: already scheduled for {due:%Y-%m-%d %H:%M}, skipped\n\n")
+            return
+    # NEVER REPEAT: every topic is used exactly once. The two slots take alternate topics of the unused list.
+    recent = used_topics()
+    unused = [t for t in ORDER if t not in recent]
+    log(f"unused topics left: {len(unused)}")
+    if not unused and not a.topic:
+        raise SystemExit("NO TOPICS LEFT: every topic has been used once. Add new topics to ORDER/BANK.")
+    if len(unused) < 20:
+        msg = f"only {len(unused)} unused topics left (about {len(unused) // 2} days) - add new topics soon"
+        print(f"::warning::{msg}")
+        summary(f"**Warning: {msg}**\n\n")
+    if a.topic:
+        lst = a.topic.split(",")  # "a,b": slot 1 makes a, slot 2 makes b
+        tries = [lst[(a.slot - 1) % len(lst)]]
+    else:  # CHOOSE: score every unused topic for viewer interest, best two (different categories) go out today
+        fb = {}
+        if os.environ.get("BUFFER_API_KEY"):
+            try:
+                ch, org = channel_id()
+                fb = PK.feedback(gql, org, ch, log)
+            except Exception as e:  # noqa
+                log("feedback skipped:", repr(e)[:150])
+        rows = PK.rank_topics(unused, recent, fb)
+        l1, l2 = PK.split_slots(rows)
+        tries = (l1 if a.slot == 1 else l2)[:8]
+        table = "\n".join(f"| {i + 1} | {s} | {sc} | {why} |" for i, (s, sc, why) in enumerate(rows[:12]))
+        log("topic ranking (best first):\n" + "\n".join(f"  {s:14s} {sc:6.1f}  {why}" for s, sc, why in rows[:12]))
+        if a.slot == 1:
+            summary(f"#### Why these topics? ranking of the {len(rows)} unused topics\n\n| # | topic | score | reasons |\n|---|---|---|---|\n{table}\n\n")
     errors = []
     for slug in tries:
         try:
@@ -249,11 +320,14 @@ def main():
         log("dry run: not uploading/scheduling")
         return
     url = upload(slug, str(today), out)
-    now = dt.datetime.now(PKT)
-    due = dt.datetime.combine(today, dt.time(SLOT_HOUR[a.slot], 0), PKT)
-    if due < now + dt.timedelta(minutes=20):  # late run: next day, same hour
-        due += dt.timedelta(days=1)
-    post = schedule(text, url, due)
+    try:
+        post = schedule(text, url, due)
+        if post.get("skipped"):
+            raise RuntimeError("slot taken meanwhile")
+    except Exception:
+        # not scheduled -> release the topic again so it is not burnt
+        subprocess.run(["gh", "release", "delete", f"{slug}-race-{today}", "-R", REPO, "--cleanup-tag", "-y"])
+        raise
     log("SCHEDULED", post)
 
 

@@ -113,6 +113,16 @@ def fmt(v):
         return f"${v / 1e12:.1f}T" if v >= 1e12 else (f"${v / 1e9:.0f}B" if v >= 1e10 else f"${v / 1e9:.1f}B")
     if k == "mt":  # million tonnes
         return f"{v / 1e3:.1f} Gt" if v >= 1e3 else f"{v:.0f} Mt"
+    if k == "usdpc":  # dollars per person
+        return f"${v:,.0f}"
+    if k == "dec1":
+        return f"{v:.1f}"
+    if k == "dec2":
+        return f"{v:.2f}"
+    if k == "pct":
+        return f"{v:.1f}%"
+    if k == "num":  # any count, any size
+        return f"{v / 1e9:.2f} B" if v >= 1e9 else (f"{v / 1e6:.1f} M" if v >= 1e6 else (f"{v / 1e3:.0f} K" if v >= 1e4 else f"{v:,.0f}"))
     return f"{v:,.0f}"
 
 
