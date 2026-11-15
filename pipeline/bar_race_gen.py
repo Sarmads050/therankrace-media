@@ -132,7 +132,7 @@ def color_of(iso):
         return (140, 150, 190)
     sm = fl.convert("RGB").resize((24, 16))
     best, bs = (140, 150, 190), -1
-    for c, n in sm.getcolors(500):
+    for n, c in sm.getcolors(500):
         mx, mn = max(c), min(c)
         sat = (mx - mn) / max(mx, 1)
         if mx > 90 and sat > 0.35 and n * sat > bs:
