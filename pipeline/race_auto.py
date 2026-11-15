@@ -63,6 +63,13 @@ def build(slug, target=82.0):
     assert y1 - y0 >= 15, "too few years"
     ds.y0, ds.y1, ds.years = y0, y1, list(range(y0, y1 + 1))
     ds.cache = {}
+    # the last year must be complete: every Top-10 country of the year before must have data (the newest year is often partial)
+    ytop = y1
+    while y1 > y0 + 15 and not all(ds.d.get(k, {}).get(y1) for k in set(ds.order(y1 - 1)[:10]) | set(ds.order(max(y0, y1 - 5))[:10])):
+        y1 -= 1
+        assert ytop - y1 <= 8, "latest years incomplete"
+    ds.y1, ds.years = y1, list(range(y0, y1 + 1))
+    ds.cache = {}
     r, n, v = ds.rank, ds.name, ds.v
     F = fmt_fn(spec["fmt"])
     top = lambda y, i: ds.order(y)[i]  # noqa

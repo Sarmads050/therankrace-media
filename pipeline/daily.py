@@ -32,12 +32,12 @@ from common import FFMPEG  # noqa
 REPO = os.environ.get("GITHUB_REPOSITORY", "Sarmads050/therankrace-media")
 PKT = dt.timezone(dt.timedelta(hours=5))
 EPOCH = dt.date(2026, 11, 16)  # first cloud day
-ORDER = ["mobile", "co2", "military", "exports", "remittances", "tourists", "imports", "manufacturing", "agriculture", "consumption",
-         "reserves", "urban", "aid", "tourism_money", "labor", "pop", "gdp"]
+ORDER = ["mobile", "co2", "military", "exports", "imports", "manufacturing", "agriculture", "consumption", "reserves", "urban",
+         "aid", "labor", "pop", "gdp"]
 PHRASE = {"pop": "population", "gdp": "economy size"}
 TAGS = {"pop": "#population #worldpopulation", "gdp": "#gdp #economy #worldeconomy", "mobile": "#mobile #smartphones #technology",
         "co2": "#climate #co2 #environment", "military": "#military #defense #geopolitics", "exports": "#exports #trade #economy",
-        "imports": "#imports #trade #economy", "remittances": "#remittances #money #economy", "tourists": "#travel #tourism #tourist",
+        "imports": "#imports #trade #economy", "remittances": "#remittances #money #economy", 
         "tourism_money": "#travel #tourism #money", "manufacturing": "#manufacturing #industry #economy", "agriculture": "#agriculture #farming #food",
         "consumption": "#spending #consumers #economy", "reserves": "#finance #reserves #economy", "urban": "#cities #urbanization #population",
         "aid": "#aid #development #economy", "labor": "#jobs #workforce #economy"}
@@ -66,6 +66,8 @@ def make_cfg(slug):
         cfg.setdefault("meta", {})["what"] = PHRASE[slug]
     else:
         cfg = RA.build(slug)
+    if cfg["years"][-1] < dt.datetime.now(PKT).year - 3:
+        raise RuntimeError(f"data too old: ends {cfg['years'][-1]}")
     return cfg
 
 
