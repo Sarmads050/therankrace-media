@@ -235,6 +235,8 @@ def static_layer(canvas):
     R.paste_card(canvas, 50, 1650, cards["caption"])
     dr = ImageDraw.Draw(canvas)
     for yr in range(YEARS[0], YEARS[-1] + 1, 10):
+        if (YEARS[-1] - yr) * 900 / (N - 1) < 70 and yr != YEARS[-1]:  # too close to the last label: skip it (no overlap)
+            continue
         dr.text((90 + 900 * (yr - YEARS[0]) / (N - 1), TL_Y + 36), str(yr), font=F("lab", 24), fill=MUTED, anchor="mm")
     dr.text((90 + 900, TL_Y + 36), str(YEARS[-1]), font=F("lab", 24), fill=MUTED, anchor="mm")
     dr.text((VW / 2, 1836), "@therankrace", font=F("labb", 28), fill=GOLD, anchor="mm")
