@@ -17,7 +17,7 @@ HL = "PAK"
 BANK = {
     "mobile": dict(ind="IT.CEL.SETS", t1="TOP 10 COUNTRIES BY", t2="MOBILE PHONE SUBSCRIPTIONS", fmt="count", more="more mobile subscriptions",
                    what="mobile phone subscriptions", src="mobile cellular subscriptions", min_y=1990),
-    "co2": dict(ind="EN.GHG.CO2.MT.CE.AR5", t1="TOP 10 COUNTRIES BY", t2="CO2 EMISSIONS", fmt="mt", more="more CO2",
+    "co2": dict(ind="EN.GHG.CO2.MT.CE.AR5", t1="TOP 10 COUNTRIES BY", t2="CO2 EMISSIONS", fmt="mt", more="more CO2 (Gt = billion tonnes)",
                 what="CO2 emissions", src="CO2 emissions (million tonnes)", min_y=1970),
     "military": dict(ind="MS.MIL.XPND.CD", t1="TOP 10 BIGGEST", t2="MILITARY SPENDERS", fmt="usd", more="more military spending",
                      what="military spending", src="military expenditure, current US dollars", min_y=1960),
@@ -27,6 +27,24 @@ BANK = {
                         what="remittances", src="personal remittances received, current US dollars", min_y=1990),
     "tourists": dict(ind="ST.INT.ARVL", t1="TOP 10 MOST VISITED", t2="COUNTRIES", fmt="count", more="more tourists",
                      what="tourist arrivals", src="international tourist arrivals", min_y=1995),
+    "imports": dict(ind="NE.IMP.GNFS.CD", t1="TOP 10 BIGGEST", t2="IMPORTERS", fmt="usd", more="more imports",
+                    what="imports", src="imports of goods and services, current US dollars", min_y=1960),
+    "manufacturing": dict(ind="NV.IND.MANF.CD", t1="TOP 10 BIGGEST", t2="MANUFACTURERS", fmt="usd", more="more factory output",
+                          what="manufacturing output", src="manufacturing value added, current US dollars", min_y=1960),
+    "agriculture": dict(ind="NV.AGR.TOTL.CD", t1="TOP 10 BIGGEST", t2="FARMING ECONOMIES", fmt="usd", more="more farm output",
+                        what="agriculture output", src="agriculture value added, current US dollars", min_y=1960),
+    "consumption": dict(ind="NE.CON.PRVT.CD", t1="TOP 10 BIGGEST", t2="CONSUMER SPENDERS", fmt="usd", more="more household spending",
+                        what="household spending", src="household final consumption, current US dollars", min_y=1960),
+    "reserves": dict(ind="FI.RES.TOTL.CD", t1="TOP 10 BIGGEST", t2="FOREIGN RESERVES", fmt="usd", more="more reserves",
+                     what="foreign reserves", src="total reserves incl. gold, current US dollars", min_y=1960),
+    "urban": dict(ind="SP.URB.TOTL", t1="TOP 10 COUNTRIES WITH MOST", t2="CITY PEOPLE", fmt="count", more="more people in cities",
+                  what="urban population", src="urban population", min_y=1960),
+    "aid": dict(ind="DT.ODA.ODAT.CD", t1="TOP 10 COUNTRIES THAT", t2="RECEIVE MOST AID", fmt="usd", more="more foreign aid",
+                what="foreign aid received", src="net official development assistance received, current US dollars", min_y=1960),
+    "tourism_money": dict(ind="ST.INT.RCPT.CD", t1="TOP 10 COUNTRIES THAT", t2="EARN MOST FROM TOURISTS", fmt="usd", more="more tourism income",
+                          what="tourism income", src="international tourism receipts, current US dollars", min_y=1995),
+    "labor": dict(ind="SL.TLF.TOTL.IN", t1="TOP 10 BIGGEST", t2="WORKFORCES", fmt="count", more="more workers",
+                  what="workforce size", src="total labor force", min_y=1990),
     "pop": dict(done=True), "gdp": dict(done=True),
 }
 
@@ -34,13 +52,13 @@ BANK = {
 def build(slug, target=82.0):
     spec = BANK[slug]
     path = os.path.join(RT.SER, slug + ".json")
-    if not os.path.exists(path):
+    if not os.path.exists(path) or os.environ.get("REFRESH"):
         RT.INDICATORS[slug] = spec["ind"]
         RT.fetch(slug)
     ds = RT.DS(slug)
     # usable range: from the first year >= min_y with >= 100 countries, to the last year with >= 100 countries
     cnt = {y: sum(1 for s in ds.d.values() if s.get(y)) for y in range(1960, 2027)}
-    ok = [y for y in cnt if cnt[y] >= 100 and y >= spec["min_y"]]
+    ok = [y for y in cnt if cnt[y] >= 80 and y >= spec["min_y"]]
     y0, y1 = ok[0], ok[-1]
     assert y1 - y0 >= 15, "too few years"
     ds.y0, ds.y1, ds.years = y0, y1, list(range(y0, y1 + 1))
@@ -51,16 +69,26 @@ def build(slug, target=82.0):
 
     cands = []  # (priority, year, text, pill)
     # a) leader changes that last
+    seen = set()
+
+    def stable(a, b, y):  # a stays ahead of b for the next 6 years (or to the end) and the pair is new
+        if (a, b) in seen or (b, a) in seen:
+            return False
+        if all((v(a, yy) or 0) > (v(b, yy) or 0) for yy in range(y, min(y + 6, y1) + 1)):
+            seen.add((a, b))
+            return True
+        return False
+
     for y in ds.years[1:]:
         a, b = top(y, 0), top(y - 1, 0)
-        if a != b and all(top(yy, 0) == a for yy in range(y, min(y + 3, y1 + 1))):
+        if a != b and stable(a, b, y):
             cands.append((1, y, f"{y}: {n(a)} passes {n(b)} and becomes number one!", f"{n(a).upper()} PASSES {n(b).upper()}: #1!"))
     # b) passes at ranks 2-3 that last >= 4 years
     for y in ds.years[1:]:
         for k in (1, 2):
             a = top(y, k)
             b = top(y - 1, k)
-            if a != b and r(a, y - 1) == k + 2 and r(b, y) == k + 2 and all(r(a, yy) == k + 1 for yy in range(y, min(y + 4, y1 + 1))):
+            if a != b and r(a, y - 1) == k + 2 and r(b, y) == k + 2 and stable(a, b, y):
                 cands.append((2, y, f"{y}: {n(a)} passes {n(b)} and becomes #{k + 1}.", f"{n(a).upper()} PASSES {n(b).upper()}: #{k + 1}"))
     # c) Pakistan (highlight)
     if ds.top10_years(HL):
@@ -128,7 +156,7 @@ def fmt_fn(kind):
         if kind == "usd":
             return f"${x / 1e12:,.1f} trillion" if x >= 1e12 else f"${x / 1e9:,.0f} billion"
         if kind == "mt":
-            return f"{x / 1e3:,.0f} billion tonnes" if x >= 1e6 else f"{x:,.0f} million tonnes"
+            return f"{x / 1e3:,.1f} billion tonnes" if x >= 1e3 else f"{x:,.0f} million tonnes"
         return f"{x:,.0f}"
     return f
 

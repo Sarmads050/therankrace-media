@@ -1,0 +1,61 @@
+name: daily-reels
+
+# Runs on GitHub's servers: no laptop, no Claude. 03:00 UTC = 08:00 Pakistan time.
+# Makes 2 Top-10 race videos and schedules them in Buffer for 6 PM and 9 PM PKT.
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (render only, do not upload or schedule)"
+        type: boolean
+        default: true
+      topic:
+        description: "Force a topic slug (optional)"
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  make:
+    strategy:
+      fail-fast: false
+      matrix:
+        slot: [1, 2]
+    runs-on: windows-latest
+    timeout-minutes: 100
+    env:
+      CI: "1"
+      PYTHONIOENCODING: utf-8
+      GH_TOKEN: ${{ github.token }}
+      BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+      BUFFER_CHANNEL_ID: ${{ secrets.BUFFER_CHANNEL_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        shell: pwsh
+        run: pip install -r requirements.txt
+      - name: Make video, upload, schedule
+        shell: pwsh
+        run: |
+          $a = @("-I", "pipeline/daily.py", "--slot", "${{ matrix.slot }}")
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            if ("${{ inputs.dry_run }}" -eq "true") { $a += "--dry-run" }
+            if ("${{ inputs.topic }}" -ne "") { $a += @("--topic", "${{ inputs.topic }}") }
+          }
+          python @a
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Keep the video (dry runs only)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: video-slot-${{ matrix.slot }}
+          path: videos/*.mp4
+          retention-days: 3

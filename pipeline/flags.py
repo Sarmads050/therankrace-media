@@ -14,12 +14,29 @@ NAMES = {"IND": "India", "CHN": "China", "USA": "the United States", "IDN": "Ind
          "EGY": "Egypt", "IRN": "Iran", "PHL": "the Philippines", "VNM": "Vietnam", "COD": "the Democratic Republic of the Congo",
          "ZAF": "South Africa", "THA": "Thailand", "NLD": "the Netherlands", "CHE": "Switzerland", "POL": "Poland", "ARG": "Argentina"}
 
-def fetch(iso):
+WB_FIX = {"Korea, Rep.": "South Korea", "Korea, Dem. People's Rep.": "North Korea", "Russian Federation": "Russia", "Turkiye": "Turkey",
+          "Viet Nam": "Vietnam", "Egypt, Arab Rep.": "Egypt", "Iran, Islamic Rep.": "Iran", "Congo, Dem. Rep.": "the Democratic Republic of the Congo",
+          "Congo, Rep.": "the Republic of the Congo", "Venezuela, RB": "Venezuela", "Yemen, Rep.": "Yemen", "Syrian Arab Republic": "Syria",
+          "Slovak Republic": "Slovakia", "Kyrgyz Republic": "Kyrgyzstan", "Lao PDR": "Laos", "Hong Kong SAR, China": "Hong Kong",
+          "Macao SAR, China": "Macau", "Czechia": "the Czech Republic", "Gambia, The": "the Gambia", "Bahamas, The": "the Bahamas",
+          "Cote d'Ivoire": "Ivory Coast", "Brunei Darussalam": "Brunei", "Myanmar": "Myanmar", "West Bank and Gaza": "Palestine"}
+
+def _cands(iso, wbname):
+    names = []
+    if iso in NAMES: names.append(NAMES[iso])
+    if wbname:
+        base = WB_FIX.get(wbname) or wbname.split(",")[0].strip()
+        names += [base, "the " + base]
+    return [f"Flag of {n}.svg" for n in dict.fromkeys(names)]
+
+def fetch(iso, wbname=None):
     path = os.path.join(DIR, iso + ".png")
     if os.path.exists(path): return "cached"
+    c = _cands(iso, wbname)
+    if not c: return "NOT FOUND"
     old = L.DIR; L.DIR = DIR
     try:
-        return L.fetch_one(iso, [f"Flag of {NAMES[iso]}.svg"]) or "NOT FOUND"
+        return L.fetch_one(iso, c) or "NOT FOUND"
     finally:
         L.DIR = old
 

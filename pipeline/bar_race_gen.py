@@ -111,6 +111,8 @@ def fmt(v):
         return f"{v / 1e9:.2f} B" if v >= 1e9 else f"{v / 1e6:.0f} M"
     if k == "usd":
         return f"${v / 1e12:.1f}T" if v >= 1e12 else (f"${v / 1e9:.0f}B" if v >= 1e10 else f"${v / 1e9:.1f}B")
+    if k == "mt":  # million tonnes
+        return f"{v / 1e3:.1f} Gt" if v >= 1e3 else f"{v:.0f} Mt"
     return f"{v:,.0f}"
 
 

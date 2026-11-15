@@ -39,6 +39,7 @@ CANVAS = None  # current frame image (set by the render loop)
 # ------------------------------------------------------------------ fonts: catchy but readable, all installed on Windows
 _FONTS = {"title": ("brlnsdb.ttf", None), "num": ("impact.ttf", None), "lab": ("bahnschrift.ttf", b"SemiBold"),
           "labb": ("bahnschrift.ttf", b"Bold"), "cap": ("gothicb.ttf", None), "small": ("bahnschrift.ttf", b"Regular")}
+_FALLBACK = {"title": ("bahnschrift.ttf", b"Bold"), "cap": ("seguisb.ttf", None)}
 _fc = {}
 
 
@@ -46,6 +47,8 @@ def F(kind, size):
     key = (kind, size)
     if key not in _fc:
         fn, var = _FONTS[kind]
+        if not os.path.exists(FONT_DIR + fn):  # e.g. GitHub Windows runners lack the Office fonts
+            fn, var = _FALLBACK.get(kind, ("arialbd.ttf", None))
         f = ImageFont.truetype(FONT_DIR + fn, size)
         if var:
             f.set_variation_by_name(var)
