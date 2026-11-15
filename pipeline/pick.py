@@ -121,39 +121,34 @@ def split_slots(rows):
 def feedback(gql, org, ch, log=print):
     """{category: multiplier 0.7..1.4} from Buffer post metrics of the last 60 days; {} when unavailable or too little data"""
     try:
-        t = gql('query { __type(name: "Post") { fields { name type { name kind ofType { name kind } } } } }')["data"]["__type"]["fields"]
-        mf = next(f for f in t if f["name"] == "metrics")
-        mname = mf["type"]["name"] or mf["type"]["ofType"]["name"]
-        mt = gql('query { __type(name: "%s") { fields { name type { name kind ofType { name kind } } } } }' % mname)["data"]["__type"]["fields"]
-        num = [f["name"] for f in mt if (f["type"]["name"] or (f["type"]["ofType"] or {}).get("name")) in ("Int", "Float")]
-        log("metrics fields:", num)
-        for want in ("views", "plays", "impressions", "reach", "likes", "reactions"):
-            if want in num:
-                break
-        else:
-            return {}
         q = ('query { posts(first: 100, input: {organizationId: "%s", filter: {status: [sent], channelIds: ["%s"]}}) '
-             '{ edges { node { id assets { ... on VideoAsset { source } } metrics { %s } } } } }' % (org, ch, want))
+             '{ edges { node { id sentAt assets { ... on VideoAsset { source } } metrics { name type value } } } } }' % (org, ch))
         edges = gql(q)["data"]["posts"]["edges"]
         per = {}
         for e in edges:
             n = e["node"]
-            m = (n.get("metrics") or {}).get(want)
             src = next((a.get("source") for a in n.get("assets") or [] if a.get("source")), "")
             mm = re.search(r"/download/(.+?)-race-", src or "")
-            if m is None or not mm:
+            ms = {(str(m.get("type")) + " " + str(m.get("name"))).lower(): m.get("value") for m in n.get("metrics") or []}
+            val = None
+            for want in ("view", "play", "impression", "reach", "like"):  # best available engagement number
+                hit = [v for k, v in ms.items() if want in k and v is not None]
+                if hit:
+                    val = float(hit[0])
+                    break
+            if val is None or not mm:
                 continue
-            per.setdefault(cat(mm.group(1)), []).append(float(m))
+            per.setdefault(cat(mm.group(1)), []).append(val)
         allv = [x for v in per.values() for x in v]
         if len(allv) < 8:
             log(f"feedback: only {len(allv)} posts with numbers - not enough yet")
             return {}
-        mean = sum(allv) / len(allv)
+        mean = sum(allv) / len(allv) or 1.0
         out = {}
         for c, v in per.items():
             shrink = len(v) / (len(v) + 3.0)  # few posts -> stay near 1.0
             out[c] = max(0.7, min(1.4, 1 + shrink * ((sum(v) / len(v)) / mean - 1)))
-        log("feedback", want, {c: round(x, 2) for c, x in out.items()})
+        log("feedback multipliers", {c: round(x, 2) for c, x in out.items()})
         return out
     except Exception as e:  # noqa
         log("feedback unavailable:", repr(e)[:200])
