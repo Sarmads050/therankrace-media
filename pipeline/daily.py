@@ -258,10 +258,16 @@ def main():
     a = ap.parse_args()
     if a.topic == "__probe__":  # print the Buffer API schema pieces the feedback loop needs (debug only)
         if a.slot == 1:
-            for q in ('{ __schema { queryType { fields { name } } } }',
-                      '{ __type(name: "Post") { fields { name type { name kind ofType { name kind } } } } }',
-                      '{ __type(name: "PostMetrics") { fields { name type { name kind ofType { name kind } } } } }'):
-                log("PROBE", q, "->", json.dumps(gql(q))[:3500])
+            def named(t):
+                while t and not t.get("name"):
+                    t = t.get("ofType")
+                return t and t["name"]
+            fs = gql('{ __type(name: "Post") { fields { name type { name kind ofType { name kind ofType { name kind ofType { name kind } } } } } } }')["data"]["__type"]["fields"]
+            mname = named(next(f for f in fs if f["name"] == "metrics")["type"])
+            log("PROBE metrics element type:", mname)
+            log("PROBE", json.dumps(gql('{ __type(name: "%s") { kind fields { name type { name kind ofType { name kind ofType { name kind } } } } enumValues { name } } }' % mname))[:3500])
+            for q in ('{ aggregatedPostMetrics: __type(name: "AggregatedPostMetrics") { fields { name } } }',):
+                log("PROBE", json.dumps(gql(q))[:1500])
         return
     today = dt.datetime.now(PKT).date() if not a.date else dt.date.fromisoformat(a.date)
     due = due_for(today, a.slot)
