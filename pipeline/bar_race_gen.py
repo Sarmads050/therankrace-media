@@ -30,8 +30,13 @@ VW, VH = 1080, 1920
 F, TXT, MUTED, GOLD, CARD = T.F, T.TXT, T.MUTED, T.GOLD, R.CARD
 BAR_H, BAR_PAD = R.BAR_H, R.BAR_PAD
 FPS = int(os.environ.get("BARRACE_FPS", "60"))
-X0, MAXLEN, PITCH, YTOP = 250, 610, 106, 408
-TL_Y = 1546
+# INSTAGRAM SAFE ZONE (phone check 2026-11-16): the Reels header covers y<160, the caption/profile overlay y>1650, the like/comment/share
+# icons x>900 for y 930-1600, and phones crop ~44 px at each side. Everything that matters stays inside x 60-900 (y 160-1640).
+X0, PITCH, YTOP = 262, 86, 480
+SAFE_R = 900
+CX = 480  # centre of the safe column (60-900)
+TL_Y = 1436
+MAXLEN = 405  # replaced below by _fit_maxlen() (so the widest value label always ends before SAFE_R)
 
 CFG = json.load(open(os.environ["RACE_CFG"], encoding="utf-8"))
 YEARS = CFG["years"]
@@ -126,6 +131,21 @@ def fmt(v):
     return f"{v:,.0f}"
 
 
+def _fit_maxlen():
+    dr0 = ImageDraw.Draw(Image.new("RGB", (4, 4)))
+    f = F("num", 44)
+    w = 0.0
+    for s_ in SER:
+        mx = float(s_.max())
+        if mx > 0:
+            for v_ in (mx, mx * 0.97, mx * 0.5):
+                w = max(w, dr0.textlength(fmt(v_), font=f))
+    return max(300.0, min(470.0, (SAFE_R - 26 - w * 1.04 - X0) / 1.05))
+
+
+MAXLEN = _fit_maxlen()
+
+
 # ------------------------------------------------------------------ colours (from the flag, with overrides)
 OVER = {"USA": (70, 120, 245), "CHN": (238, 62, 52), "IND": (255, 150, 40), "PAK": (36, 170, 96), "JPN": (255, 110, 150),
         "DEU": (250, 200, 40), "GBR": (120, 100, 235), "FRA": (60, 150, 255), "ITA": (50, 200, 120), "RUS": (190, 90, 235),
@@ -197,8 +217,8 @@ def simulate():
 # ------------------------------------------------------------------ frame
 def timeline_dyn(canvas, m):
     ss = 3
-    x0, x1 = 90, 990
-    bx, by, bw, bh = 60, TL_Y - 30, 960, 60
+    x0, x1 = 110, 850
+    bx, by, bw, bh = 60, TL_Y - 30, 840, 60
     im = Image.new("RGBA", (bw * ss, bh * ss), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
     X = lambda k: (x0 + (x1 - x0) * k / (N - 1) - bx) * ss  # noqa
@@ -224,23 +244,40 @@ def timeline_dyn(canvas, m):
     canvas.paste(im, (bx, by), im)
 
 
+def fit_font(dr, text, name, size, width):
+    """largest font <= size whose text is <= width px wide"""
+    while size > 24 and dr.textlength(text, font=F(name, size)) > width:
+        size -= 2
+    return size
+
+
 def static_layer(canvas):
-    cards = R.bake_cards()
+    cards = {"date": R.soft_card(500, 104, 36, (46, 36, 100), edge=GOLD),
+             "band": R.soft_card(960, 112, 36, (96, 72, 10, 150), edge=GOLD, sh_alpha=0, gloss=False),
+             "timeline": R.soft_card(840, 112, 30, (24, 30, 76)),
+             "caption": R.soft_card(840, 124, 34, CARD)}
     dr = ImageDraw.Draw(canvas)
-    T.TX(dr, (VW / 2, 84), CFG["title1"], "title", 72, TXT, anchor="mm", stroke=3)
-    T.TX(dr, (VW / 2, 156), CFG["title2"], "title", 56, GOLD, anchor="mm")
-    R.paste_card(canvas, 290, 218, cards["date"])
-    R.paste_card(canvas, 34, YTOP - 56, cards["band"])
-    R.paste_card(canvas, 50, TL_Y - 56, cards["timeline"])
-    R.paste_card(canvas, 50, 1650, cards["caption"])
+    T.TX(dr, (VW / 2, 198), CFG["title1"], "title", fit_font(dr, CFG["title1"], "title", 68, 940), TXT, anchor="mm", stroke=3)
+    T.TX(dr, (VW / 2, 262), CFG["title2"], "title", fit_font(dr, CFG["title2"], "title", 54, 940), GOLD, anchor="mm")
+    R.paste_card(canvas, 290, 300, cards["date"])
+    R.paste_card(canvas, 60, YTOP - 56, cards["band"])
+    R.paste_card(canvas, 60, TL_Y - 56, cards["timeline"])
+    R.paste_card(canvas, 60, 1500, cards["caption"])
     dr = ImageDraw.Draw(canvas)
+    span = 740.0
     for yr in range(YEARS[0], YEARS[-1] + 1, 10):
-        if (YEARS[-1] - yr) * 900 / (N - 1) < 70 and yr != YEARS[-1]:  # too close to the last label: skip it (no overlap)
+        if (YEARS[-1] - yr) * span / (N - 1) < 70 and yr != YEARS[-1]:  # too close to the last label: skip it (no overlap)
             continue
-        dr.text((90 + 900 * (yr - YEARS[0]) / (N - 1), TL_Y + 36), str(yr), font=F("lab", 24), fill=MUTED, anchor="mm")
-    dr.text((90 + 900, TL_Y + 36), str(YEARS[-1]), font=F("lab", 24), fill=MUTED, anchor="mm")
-    dr.text((VW / 2, 1836), "@therankrace", font=F("labb", 28), fill=GOLD, anchor="mm")
-    dr.text((VW / 2, 1874), CFG["source"], font=F("small", 19), fill=MUTED, anchor="mm")
+        dr.text((110 + span * (yr - YEARS[0]) / (N - 1), TL_Y + 36), str(yr), font=F("lab", 24), fill=MUTED, anchor="mm")
+    dr.text((110 + span, TL_Y + 36), str(YEARS[-1]), font=F("lab", 24), fill=MUTED, anchor="mm")
+    src = CFG["source"]
+    for ssz in (18, 16, 14):  # source line: at most 2 lines inside the safe column
+        sfnt = F("small", ssz)
+        slines = wrap(dr, src, sfnt, 840, False)
+        if len(slines) <= 2:
+            break
+    for q, ln in enumerate(slines[:2]):
+        dr.text((CX, 1646 + (q - (min(len(slines), 2) - 1) / 2) * (ssz + 5)), ln, font=sfnt, fill=MUTED, anchor="mm")
     return dr
 
 
@@ -251,7 +288,7 @@ def render_frame(k):
     R.particles(canvas, t)
     static_layer(canvas)
     dr = ImageDraw.Draw(canvas)
-    T.TX(dr, (VW / 2, 272), str(YEARS[min(N - 1, int(round(m)))]), "num", 80, GOLD, anchor="mm", stroke=2)
+    T.TX(dr, (VW / 2, 352), str(YEARS[min(N - 1, int(round(m)))]), "num", 80, GOLD, anchor="mm", stroke=2)
     pk, ax = P[k], float(AX[k])
     vals = [catmull(s, m) for s in SER]
     for i in sorted(range(B), key=lambda j: -pk[j]):
@@ -268,20 +305,20 @@ def render_frame(k):
         spr = R.bar_sprite(L, COLS[i], top - iy, shine, a)
         canvas.paste(spr, (X0 - BAR_PAD, iy), spr)
         im, pad = V.flag_badge(e["iso"], hi)
-        R.paste_sub(canvas, im, 100 - pad, y - 38 - pad + 6, a)
+        R.paste_sub(canvas, im, 138 - pad, y - 38 - pad + 6, a)
         T.TX(dr, (X0 + 4, y - 28), e["name"], "labb", 30, T.mix(GOLD if hi else TXT, a), anchor="lm")
         T.TX(dr, (X0 + L + 22, y + 10), fmt(v), "num", 44, T.mix(TXT, a), anchor="lm")
         rank = int(round(p)) + 1
         if rank in R.MEDAL:
             sp = T.sphere_sprite(R.MEDAL[rank], 26)
-            R.paste_sub(canvas, sp, 58 - 26, y - 26 + 6, a)
-            dr.text((58, y + 7), str(rank), font=F("num", 30), fill=T.mix((60, 36, 0), a), anchor="mm")
+            R.paste_sub(canvas, sp, 98 - 26, y - 26 + 6, a)
+            dr.text((98, y + 7), str(rank), font=F("num", 30), fill=T.mix((60, 36, 0), a), anchor="mm")
         else:
-            R.paste_sub(canvas, R.chip(), 58 - 25, y - 25 + 6, a)
-            dr.text((58, y + 7), str(min(rank, 10)), font=F("num", 26), fill=T.mix(MUTED, a), anchor="mm")
+            R.paste_sub(canvas, R.chip(), 98 - 25, y - 25 + 6, a)
+            dr.text((98, y + 7), str(min(rank, 10)), font=F("num", 26), fill=T.mix(MUTED, a), anchor="mm")
         lead = max(0.0, 1.0 - p / 0.5)
         if lead > 0.03:
-            R.paste_sub(canvas, R.crown_sprite(), 100 + 24, y - 60, lead * a)
+            R.paste_sub(canvas, R.crown_sprite(), 138 + 24, y - 60, lead * a)
 
     timeline_dyn(canvas, m)
     for t0, t1, text in EVENTS:
@@ -292,17 +329,22 @@ def render_frame(k):
             sp2 = spr.resize((max(2, int(spr.width * sc)), max(2, int(spr.height * sc))), Image.BICUBIC)
             if a < 0.99:
                 sp2.putalpha(sp2.getchannel("A").point([int(v * a) for v in range(256)]))
-            canvas.paste(sp2, (int(VW / 2 - sp2.width / 2), int(1450 - sp2.height / 2)), sp2)
+            if sp2.width > 830:  # never wider than the safe column
+                sp2 = sp2.resize((830, max(2, int(sp2.height * 830 / sp2.width))), Image.BICUBIC)
+            canvas.paste(sp2, (int(CX - sp2.width / 2), int(1340 - sp2.height / 2)), sp2)
     dr = ImageDraw.Draw(canvas)
     for j, (c0, text) in enumerate(CAPS):
         c1 = CAPS[j + 1][0] if j + 1 < len(CAPS) else TOTAL
         if c0 <= t < c1:
             a = R.alpha_window(t, c0, c1, 0.5) if j else min(R.ease(t / 0.8), R.ease((c1 - t) / 0.5))
-            fnt = F("cap", 36)
-            lines = wrap(dr, text, fnt, 880, False)
+            for csz in (36, 33, 30, 27, 24):  # biggest font that fits in 2 lines
+                fnt = F("cap", csz)
+                lines = wrap(dr, text, fnt, 790, False)
+                if len(lines) <= 2:
+                    break
             for q, ln in enumerate(lines):
-                yy = 1725 + (q - (len(lines) - 1) / 2) * 52
-                dr.text((VW / 2, yy), ln, font=fnt, fill=R.lerpc(CARD, TXT, a), anchor="mm")
+                yy = 1562 + (q - (len(lines) - 1) / 2) * (csz + 14)
+                dr.text((CX, yy), ln, font=fnt, fill=R.lerpc(CARD, TXT, a), anchor="mm")
     prog = t / TOTAL
     dr.rectangle([0, VH - 10, VW, VH], fill=CARD)
     dr.rectangle([0, VH - 10, int(VW * prog), VH], fill=GOLD)

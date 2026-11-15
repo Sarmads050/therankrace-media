@@ -245,7 +245,7 @@ def fmt_fn(kind):
         if kind == "count":
             return f"{x / 1e9:.2f} billion" if x >= 1e9 else (f"{x / 1e6:,.0f} million" if x >= 1e6 else f"{x:,.0f}")
         if kind == "usd":
-            return f"${x / 1e12:,.1f} trillion" if x >= 1e12 else f"${x / 1e9:,.0f} billion"
+            return f"${x / 1e12:,.1f} trillion" if x >= 1e12 else (f"${x / 1e9:,.0f} billion" if x >= 1e9 else f"${x / 1e6:,.0f} million")
         if kind == "mt":
             return f"{x / 1e3:,.1f} billion tonnes" if x >= 1e3 else f"{x:,.0f} million tonnes"
         if kind == "usdpc":
