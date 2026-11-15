@@ -256,6 +256,13 @@ def main():
     ap.add_argument("--date")
     ap.add_argument("--topic", help="force a topic slug (testing)")
     a = ap.parse_args()
+    if a.topic == "__probe__":  # print the Buffer API schema pieces the feedback loop needs (debug only)
+        if a.slot == 1:
+            for q in ('{ __schema { queryType { fields { name } } } }',
+                      '{ __type(name: "Post") { fields { name type { name kind ofType { name kind } } } } }',
+                      '{ __type(name: "PostMetrics") { fields { name type { name kind ofType { name kind } } } } }'):
+                log("PROBE", q, "->", json.dumps(gql(q))[:3500])
+        return
     today = dt.datetime.now(PKT).date() if not a.date else dt.date.fromisoformat(a.date)
     due = due_for(today, a.slot)
     if not a.dry_run and not a.topic:  # this slot is already filled (e.g. a manual test run): nothing to do, nothing burnt
