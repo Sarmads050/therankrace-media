@@ -17,8 +17,8 @@ HL = "PAK"
 BANK = {
     "mobile": dict(ind="IT.CEL.SETS", t1="TOP 10 COUNTRIES BY", t2="MOBILE PHONE SUBSCRIPTIONS", fmt="count", more="more mobile subscriptions",
                    what="mobile phone subscriptions", src="mobile cellular subscriptions", min_y=1990),
-    "co2": dict(ind="EN.GHG.CO2.MT.CE.AR5", t1="TOP 10 COUNTRIES BY", t2="CO2 EMISSIONS", fmt="mt", more="more CO2 (Gt = billion tonnes)",
-                what="CO2 emissions", src="CO2 emissions (million tonnes)", min_y=1970),
+    "co2": dict(ind="EN.GHG.CO2.MT.CE.AR5", t1="TOP 10 COUNTRIES BY", t2="CO2 EMISSIONS", fmt="mt", more="more CO2 (tonnes)",
+                what="CO2 emissions", src="CO2 emissions, tonnes", min_y=1970),
     "military": dict(ind="MS.MIL.XPND.CD", t1="TOP 10 BIGGEST", t2="MILITARY SPENDERS", fmt="usd", more="more military spending",
                      what="military spending", src="military expenditure, current US dollars", min_y=1960),
     "exports": dict(ind="NE.EXP.GNFS.CD", t1="TOP 10 BIGGEST", t2="EXPORTERS", fmt="usd", more="more exports",
@@ -87,12 +87,12 @@ _add("agland", "AG.LND.AGRI.K2", "TOP 10 COUNTRIES WITH", "THE MOST FARMLAND", "
 _add("forest", "AG.LND.FRST.K2", "TOP 10 COUNTRIES WITH", "THE MOST FOREST", "num", "more forest (square km)", "forest area", "forest area, square km", 1990)
 _add("fish", "ER.FSH.PROD.MT", "TOP 10 BIGGEST", "FISH PRODUCERS", "num", "more fish (metric tons)", "fish production", "total fisheries production, metric tons", 1960)
 _add("aqua", "ER.FSH.AQUA.MT", "TOP 10 BIGGEST", "FISH FARMING COUNTRIES", "num", "more farmed fish (metric tons)", "fish farming", "aquaculture production, metric tons", 1976)
-_add("ghg", "EN.GHG.ALL.MT.CE.AR5", "TOP 10 COUNTRIES BY", "GREENHOUSE GASES", "mt", "more greenhouse gas (Gt = billion tonnes)", "greenhouse gas emissions",
-     "total greenhouse gas emissions (million tonnes CO2 equivalent)", 1970)
-_add("methane", "EN.GHG.CH4.MT.CE.AR5", "TOP 10 COUNTRIES BY", "METHANE EMISSIONS", "mt", "more methane (Mt = million tonnes CO2 equivalent)", "methane emissions",
-     "methane emissions (million tonnes CO2 equivalent)", 1970)
-_add("n2o", "EN.GHG.N2O.MT.CE.AR5", "TOP 10 COUNTRIES BY", "NITROUS OXIDE EMISSIONS", "mt", "more nitrous oxide (Mt = million tonnes CO2 equivalent)",
-     "nitrous oxide emissions", "nitrous oxide emissions (million tonnes CO2 equivalent)", 1970)
+_add("ghg", "EN.GHG.ALL.MT.CE.AR5", "TOP 10 COUNTRIES BY", "GREENHOUSE GASES", "mt", "more greenhouse gas (tonnes of CO2 equivalent)", "greenhouse gas emissions",
+     "total greenhouse gas emissions, tonnes of CO2 equivalent", 1970)
+_add("methane", "EN.GHG.CH4.MT.CE.AR5", "TOP 10 COUNTRIES BY", "METHANE EMISSIONS", "mt", "more methane (tonnes of CO2 equivalent)", "methane emissions",
+     "methane emissions, tonnes of CO2 equivalent", 1970)
+_add("n2o", "EN.GHG.N2O.MT.CE.AR5", "TOP 10 COUNTRIES BY", "NITROUS OXIDE EMISSIONS", "mt", "more nitrous oxide (tonnes of CO2 equivalent)",
+     "nitrous oxide emissions", "nitrous oxide emissions, tonnes of CO2 equivalent", 1970)
 _add("services", "NV.SRV.TOTL.CD", "TOP 10 BIGGEST", "SERVICE ECONOMIES", "usd", "more service-sector output", "service sector output",
      "services value added, current US dollars", 1978)
 _add("industry", "NV.IND.TOTL.CD", "TOP 10 BIGGEST", "INDUSTRIAL ECONOMIES", "usd", "more industry output", "industry output",
@@ -241,24 +241,19 @@ def ds_more(spec):
 
 
 def fmt_fn(kind):
+    """numbers are always written in full (never 1.2 billion / 1.2B)"""
     def f(x):
-        if kind == "count":
-            return f"{x / 1e9:.2f} billion" if x >= 1e9 else (f"{x / 1e6:,.0f} million" if x >= 1e6 else f"{x:,.0f}")
-        if kind == "usd":
-            return f"${x / 1e12:,.1f} trillion" if x >= 1e12 else (f"${x / 1e9:,.0f} billion" if x >= 1e9 else f"${x / 1e6:,.0f} million")
-        if kind == "mt":
-            return f"{x / 1e3:,.1f} billion tonnes" if x >= 1e3 else f"{x:,.0f} million tonnes"
-        if kind == "usdpc":
+        if kind == "usd" or kind == "usdpc":
             return f"${x:,.0f}"
+        if kind == "mt":  # series are in million tonnes
+            return f"{x * 1e6:,.0f} tonnes"
         if kind == "dec1":
             return f"{x:.1f}"
         if kind == "dec2":
             return f"{x:.2f}"
         if kind == "pct":
             return f"{x:.1f}%"
-        if kind == "num":
-            return f"{x / 1e9:.2f} billion" if x >= 1e9 else (f"{x / 1e6:.1f} million" if x >= 1e6 else (f"{x / 1e3:.0f} thousand" if x >= 1e4 else f"{x:,.0f}"))
-        return f"{x:,.0f}"
+        return f"{x:,.0f}"  # count / num
     return f
 
 

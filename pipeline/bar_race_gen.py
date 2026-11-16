@@ -28,15 +28,18 @@ import top10_video as V  # noqa  (flag badge sprites)
 
 VW, VH = 1080, 1920
 F, TXT, MUTED, GOLD, CARD = T.F, T.TXT, T.MUTED, T.GOLD, R.CARD
-BAR_H, BAR_PAD = R.BAR_H, R.BAR_PAD
+BAR_H, BAR_PAD = 34, R.BAR_PAD  # slim bars (was 52)
+R.BAR_H = BAR_H
 FPS = int(os.environ.get("BARRACE_FPS", "60"))
 # INSTAGRAM SAFE ZONE (phone check 2026-11-16): the Reels header covers y<160, the caption/profile overlay y>1650, the like/comment/share
 # icons x>900 for y 930-1600, and phones crop ~44 px at each side. Everything that matters stays inside x 60-900 (y 160-1640).
-X0, PITCH, YTOP = 262, 86, 480
+X0, PITCH, YTOP = 216, 86, 480
 SAFE_R = 900
+NUM_R = 896  # numbers are written in full, right-aligned in one column that ends here
+FLAG_SC = 0.70  # smaller flag badges
 CX = 480  # centre of the safe column (60-900)
 TL_Y = 1436
-MAXLEN = 405  # replaced below by _fit_maxlen() (so the widest value label always ends before SAFE_R)
+MAXLEN = (NUM_R - X0) / 1.05 - 2  # the bar may use the whole row; the number sits on the line above it
 
 CFG = json.load(open(os.environ["RACE_CFG"], encoding="utf-8"))
 YEARS = CFG["years"]
@@ -111,39 +114,57 @@ HITS = [t_of(y) for y in CFG["hits"]]
 
 
 def fmt(v):
+    """every number is written in full (1,234,567,890) - never 1.2B / 1.2M"""
     k = CFG["fmt"]
-    if k == "count":
-        return f"{v / 1e9:.2f} B" if v >= 1e9 else f"{v / 1e6:.0f} M"
     if k == "usd":
-        return f"${v / 1e12:.1f}T" if v >= 1e12 else (f"${v / 1e9:.0f}B" if v >= 1e10 else f"${v / 1e9:.1f}B")
-    if k == "mt":  # million tonnes
-        return f"{v / 1e3:.1f} Gt" if v >= 1e3 else f"{v:.0f} Mt"
+        return f"${v:,.0f}"
     if k == "usdpc":  # dollars per person
         return f"${v:,.0f}"
+    if k == "mt":  # series are in million tonnes -> tonnes
+        return f"{v * 1e6:,.0f}"
     if k == "dec1":
         return f"{v:.1f}"
     if k == "dec2":
         return f"{v:.2f}"
     if k == "pct":
         return f"{v:.1f}%"
-    if k == "num":  # any count, any size
-        return f"{v / 1e9:.2f} B" if v >= 1e9 else (f"{v / 1e6:.1f} M" if v >= 1e6 else (f"{v / 1e3:.0f} K" if v >= 1e4 else f"{v:,.0f}"))
-    return f"{v:,.0f}"
+    return f"{v:,.0f}"  # count / num
 
 
-def _fit_maxlen():
+def _fit_numfont():
+    """biggest number font (<=40) so that the widest number leaves room for the country name on the same line"""
     dr0 = ImageDraw.Draw(Image.new("RGB", (4, 4)))
-    f = F("num", 44)
-    w = 0.0
+    labels = []
     for s_ in SER:
         mx = float(s_.max())
         if mx > 0:
-            for v_ in (mx, mx * 0.97, mx * 0.5):
-                w = max(w, dr0.textlength(fmt(v_), font=f))
-    return max(300.0, min(470.0, (SAFE_R - 26 - w * 1.04 - X0) / 1.05))
+            labels += [fmt(mx), fmt(mx * 0.97)]
+    size = 40
+    while size > 22 and max(dr0.textlength(t_, font=F("num", size)) for t_ in labels) > 400:
+        size -= 2
+    return size
 
 
-MAXLEN = _fit_maxlen()
+NF = _fit_numfont()
+_FLAGS = {}
+
+
+_CROWN = []
+
+
+def _crown():
+    if not _CROWN:
+        c = R.crown_sprite()
+        _CROWN.append(c.resize((int(c.width * 0.8), int(c.height * 0.8)), Image.LANCZOS))
+    return _CROWN[0]
+
+
+def small_flag(iso, hi):
+    k = (iso, hi)
+    if k not in _FLAGS:
+        im, pad = V.flag_badge(iso, hi)
+        _FLAGS[k] = (im.resize((int(im.width * FLAG_SC), int(im.height * FLAG_SC)), Image.LANCZOS), int(round(pad * FLAG_SC)))
+    return _FLAGS[k]
 
 
 # ------------------------------------------------------------------ colours (from the flag, with overrides)
@@ -299,26 +320,26 @@ def render_frame(k):
         y = YTOP + p * PITCH
         hi = e["iso"] == HIGH
         L = min(max(BAR_H * 1.05, v / ax * MAXLEN), MAXLEN * 1.05)
-        top = y + 10 - BAR_H / 2 - BAR_PAD
+        top = y + 17 - BAR_H / 2 - BAR_PAD  # slim bar under the name/number line
         iy = int(math.floor(top))
         shine = (t * 0.42 + i * 0.19) % 1.6 - 0.3
         spr = R.bar_sprite(L, COLS[i], top - iy, shine, a)
         canvas.paste(spr, (X0 - BAR_PAD, iy), spr)
-        im, pad = V.flag_badge(e["iso"], hi)
-        R.paste_sub(canvas, im, 138 - pad, y - 38 - pad + 6, a)
-        T.TX(dr, (X0 + 4, y - 28), e["name"], "labb", 30, T.mix(GOLD if hi else TXT, a), anchor="lm")
-        T.TX(dr, (X0 + L + 22, y + 10), fmt(v), "num", 44, T.mix(TXT, a), anchor="lm")
+        im, pad = small_flag(e["iso"], hi)
+        R.paste_sub(canvas, im, 122 - pad, y + 4 - 27 - pad, a)
+        T.TX(dr, (X0 + 2, y - 26), e["name"], "labb", 28, T.mix(GOLD if hi else TXT, a), anchor="lm")
+        T.TX(dr, (NUM_R, y - 26), fmt(v), "num", NF, T.mix(TXT, a), anchor="rm")
         rank = int(round(p)) + 1
         if rank in R.MEDAL:
-            sp = T.sphere_sprite(R.MEDAL[rank], 26)
-            R.paste_sub(canvas, sp, 98 - 26, y - 26 + 6, a)
-            dr.text((98, y + 7), str(rank), font=F("num", 30), fill=T.mix((60, 36, 0), a), anchor="mm")
+            sp = T.sphere_sprite(R.MEDAL[rank], 20)
+            R.paste_sub(canvas, sp, 92 - 20, y + 5 - 20, a)
+            dr.text((92, y + 6), str(rank), font=F("num", 24), fill=T.mix((60, 36, 0), a), anchor="mm")
         else:
-            R.paste_sub(canvas, R.chip(), 98 - 25, y - 25 + 6, a)
-            dr.text((98, y + 7), str(min(rank, 10)), font=F("num", 26), fill=T.mix(MUTED, a), anchor="mm")
+            R.paste_sub(canvas, R.chip(18), 92 - 21, y + 5 - 21, a)
+            dr.text((92, y + 6), str(min(rank, 10)), font=F("num", 22), fill=T.mix(MUTED, a), anchor="mm")
         lead = max(0.0, 1.0 - p / 0.5)
         if lead > 0.03:
-            R.paste_sub(canvas, R.crown_sprite(), 138 + 24, y - 60, lead * a)
+            R.paste_sub(canvas, _crown(), 161 - 26, y - 46, lead * a)
 
     timeline_dyn(canvas, m)
     for t0, t1, text in EVENTS:
