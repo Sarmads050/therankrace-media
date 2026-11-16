@@ -124,7 +124,7 @@ def feedback(gql, org, ch, log=print):
         q = ('query { posts(first: 100, input: {organizationId: "%s", filter: {status: [sent], channelIds: ["%s"]}}) '
              '{ edges { node { id sentAt assets { ... on VideoAsset { source } } metrics { name type value } } } } }' % (org, ch))
         edges = gql(q)["data"]["posts"]["edges"]
-        per = {}
+        per, byhour = {}, {}
         for e in edges:
             n = e["node"]
             src = next((a.get("source") for a in n.get("assets") or [] if a.get("source")), "")
@@ -138,7 +138,15 @@ def feedback(gql, org, ch, log=print):
                     break
             if val is None or not mm:
                 continue
-            per.setdefault(cat(mm.group(1)), []).append(val)
+            # shares / saves / comments are what makes Instagram suggest a Reel to new people -> weigh them above plain views
+            bonus = sum(w * float(next((v for k, v in ms.items() if key in k and v is not None), 0) or 0)
+                        for key, w in (("share", 25), ("save", 15), ("comment", 10)))
+            per.setdefault(cat(mm.group(1)), []).append(val + bonus)
+            hr = (n.get("sentAt") or "")[11:13]
+            if hr:
+                byhour.setdefault(hr, []).append(val)
+        if byhour:  # which posting hour (UTC) gets more views - for retuning the 18:00 / 21:00 PKT slots later
+            log("avg views by UTC hour:", {h: round(sum(v) / len(v)) for h, v in sorted(byhour.items())}, "posts", {h: len(v) for h, v in sorted(byhour.items())})
         allv = [x for v in per.values() for x in v]
         if len(allv) < 8:
             log(f"feedback: only {len(allv)} posts with numbers - not enough yet")

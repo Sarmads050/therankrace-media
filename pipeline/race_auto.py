@@ -133,7 +133,11 @@ _add("healthpc", "SH.XPD.CHEX.PC.CD", "TOP 10 COUNTRIES BY", "HEALTH SPENDING PE
      "health spending per person", "current health expenditure per capita, current US dollars", 2000)
 
 
-def build(slug, target=82.0):
+TARGET = 36.0  # seconds of race motion. Real data (2026-11-16): 94 s Reels were watched only ~25 s on average (27%) -> shorter = more completion = more reach
+CAP_GAP_S = 4.4  # at least this many seconds between two captions (reading time)
+
+
+def build(slug, target=TARGET):
     spec = BANK[slug]
     path = os.path.join(RT.SER, slug + ".json")
     if not os.path.exists(path) or os.environ.get("REFRESH"):
@@ -203,15 +207,15 @@ def build(slug, target=82.0):
         cands.append((4, yy, f"In {yy}: {n(a)} {F(v(a, yy))}, {n(b)} {F(v(b, yy))}, {n(c)} {F(v(c, yy))}.", None))
 
     chosen, pills = [], []
-    GAP = max(3.0, (y1 - y0) / 14.0)
+    GAP = max(3.0, (y1 - y0) / target * CAP_GAP_S)
     for pr, y, text, pill in sorted(cands, key=lambda c: (c[0], c[1])):
-        if y < y0 + 4.0 or y > y1 - 3:
+        if y < y0 + 5.5 * (y1 - y0) / target or y > y1 - 3:
             continue
         if all(abs(y - c[1]) >= GAP for c in chosen):
             chosen.append((pr, y, text, pill))
     chosen.sort(key=lambda c: c[1])
     caps = [dict(at=y0, text=f"In {y0}, {n(top(y0, 0))} is number one with {F(v(top(y0, 0), y0))}. {n(top(y0, 1))} is second."),
-            dict(at=y0 + 2.3, text=f"Each bar is a country. A longer bar means {ds_more(spec)}.")]
+            dict(at=y0 + 3.0 * (y1 - y0) / target, text=f"Each bar is a country. A longer bar means {ds_more(spec)}.")]
     for pr, y, text, pill in chosen:
         caps.append(dict(at=y, text=text))
         if pill:
@@ -219,15 +223,17 @@ def build(slug, target=82.0):
     a, b = top(y1, 0), top(y1, 1)
     hl_rank = r(HL, y1)
     tail = [dict(at={"tail": 0.4}, text=f"{y1}: {n(a)} {F(v(a, y1))}, {n(b)} {F(v(b, y1))}." + (f" Pakistan is #{hl_rank} with {F(v(HL, y1))}." if hl_rank else "")),
-            dict(at={"tail": 5.0}, text="Which country surprised you most? Tell us in the comments.")]
+            dict(at={"tail": 3.4}, text="Save this and share it with a friend. Which country surprised you? Comment below.")]
     if hl_rank:
-        pills.append(dict(at={"tail": 0.4}, dur=4.2, text=f"PAKISTAN IS #{hl_rank} TODAY"))
-    ev_years = [p["at"] for p in pills if not isinstance(p["at"], dict)] or [int((y0 + y1) / 2)]
+        pills.append(dict(at={"tail": 0.4}, dur=3.0, text=f"PAKISTAN IS #{hl_rank} TODAY"))
+    # hook in the first seconds: a question people want to answer (and answer in the comments)
+    pills.insert(0, dict(at=y0, dur=3.0, text=f"CAN YOU GUESS THE #1 IN {y1}?"))
+    ev_years = [p["at"] for p in pills if not isinstance(p["at"], dict) and p["at"] != y0] or [int((y0 + y1) / 2)]
     hits = pick_hits(ev_years, y0, y1)
     ents = ds.ever()
     cfg = dict(slug=slug, years=ds.years, entities=[{"iso": c, "name": n(c)} for c in ents],
                series={c: [v(c, y) for y in ds.years] for c in ents}, title1=spec["t1"], title2=f"{spec['t2']} {y0}-{y1}" if len(spec["t2"]) < 20 else spec["t2"],
-               fmt=spec["fmt"], captions=caps + tail, pills=pills, hits=hits, highlight=HL, tail=9.0,
+               fmt=spec["fmt"], captions=caps + tail, pills=pills, hits=hits, highlight=HL, tail=6.8,
                source=f"Data: World Bank, {spec['src']}, {y0} to {y1} (updated {ds.updated}). Flags: Wikipedia.",
                seg=pace_for(ev_years, y0, y1, target), built=__import__("time").strftime("%Y-%m-%d %H:%M"), updated=ds.updated,
                meta=dict(what=spec["what"], y0=y0, y1=y1, leader=n(a), second=n(b), hl_rank=hl_rank, hl_value=v(HL, y1)))
@@ -282,7 +288,7 @@ def pace_for(events, y0, y1, target, slow_ratio=0.65, lead=1.0, lag=2.0):
         else:
             merged.append([a, b])
     Z = sum(b - a for a, b in merged)
-    fast = min(1.1, max(0.3, ((y1 - y0 - Z) + Z / slow_ratio) / target))
+    fast = min(2.4, max(0.3, ((y1 - y0 - Z) + Z / slow_ratio) / target))
     slow = fast * slow_ratio
     segs, cur = [], float(y0)
     if merged and merged[0][0] > y0 + 2.0:

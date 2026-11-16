@@ -41,6 +41,9 @@ TAGS = {"pop": "#population #worldpopulation", "gdp": "#gdp #economy #worldecono
         "tourism_money": "#travel #tourism #money", "manufacturing": "#manufacturing #industry #economy", "agriculture": "#agriculture #farming #food",
         "consumption": "#spending #consumers #economy", "reserves": "#finance #reserves #economy", "urban": "#cities #urbanization #population",
         "aid": "#aid #development #economy", "labor": "#jobs #workforce #economy"}
+CAT_TAGS = {"military": "#military #defense", "economy": "#economy #gdp", "finance": "#finance #money", "people": "#population #demographics",
+            "trade": "#trade #exports", "tech": "#technology #tech", "climate": "#climate #environment", "industry": "#industry #business",
+            "health": "#health #healthcare", "transport": "#transport #travel", "food": "#food #agriculture"}
 SLOT_HOUR = {1: 18, 2: 21}
 
 
@@ -109,7 +112,7 @@ def render(slug, cfg, date, out):
     dur = int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3))
     mv = re.search(r"mean_volume: (-?[\d.]+) dB", t)
     assert "1080x1920" in t and " 60 fps" in t, "bad video format"
-    assert 40 <= dur <= 119.5, f"bad duration {dur}"
+    assert 25 <= dur <= 119.5, f"bad duration {dur}"
     assert mv and -24 <= float(mv.group(1)) <= -9, f"bad audio level {mv and mv.group(1)}"
     log(f"verified {out}: {dur:.1f}s mean {mv.group(1)} dB")
     return dur
@@ -132,12 +135,20 @@ def caption(slug, cfg):
     hooks.append(f"{first} vs {second}: who wins the race for {what}? Watch {y0} to {y1} 👀")
     hook = hooks[0] if (pr and pr <= 10) else hooks[(int(time.time() // 86400)) % len(hooks)]
     title = (cfg["title1"] + " " + cfg["title2"]).title().replace("Co2", "CO2").replace("Gdp", "GDP")
-    words = " ".join(re.findall(r"[A-Za-z]+", f"{first} {second}")).lower().split()
-    ctags = " ".join("#" + w for w in dict.fromkeys(["pakistan"] + [first.lower().replace(" ", ""), second.lower().replace(" ", "")]))
-    tags = f"#top10 {TAGS.get(slug, '#economy #data')} {ctags} #datavisualization #barchartrace #worldranking"
-    tags = " ".join(dict.fromkeys(tags.split()))
-    return (f"{hook}\n\n{title}. Which country surprised you most? Tell us in the comments 👇\n\n"
-            f"Follow @therankrace for a new Top 10 race every day.\n\n{cfg['source'].split(' (updated')[0].replace('Data: ', 'Data: ')}. Flags: Wikipedia.\n\n{tags}")
+    # Instagram SEO: the first line (what people see before "more") is the search keyword + a hook; 5-6 focused hashtags (not 10);
+    # a pointed question (comments), a save/share ask and a follow ask (the signals Instagram uses to suggest a Reel to new people)
+    qs = [f"Which country will be #1 in {y1 + 15}? Comment your guess 👇",
+          f"Which country surprised you most? Tell us in the comments 👇",
+          f"Is this what you expected? Comment your country and its rank 👇"]
+    q = qs[(int(time.time() // 86400) + len(slug)) % len(qs)]
+    ur = "\nPakistan ka number kya hai? Comment mein batayein 🇵🇰" if pr else ""
+    topic_tags = TAGS.get(slug) or CAT_TAGS.get(PK.cat(slug), "#economy #data")
+    ctags = ["#pakistan", "#" + re.sub(r"[^a-z]", "", first.lower())]
+    tags = ["#top10"] + topic_tags.split()[:2] + ctags + ["#barchartrace", "#worldranking"]
+    tags = " ".join(dict.fromkeys(tags))
+    src = cfg["source"].split(" (updated")[0]
+    return (f"{hook}\n\n{title}: {first} #1, {second} #2 in {y1}.\n\n{q}{ur}\n\n"
+            f"🔖 Save this and send it to a friend.\nFollow @therankrace for a new Top 10 world ranking every day.\n\n{src}\n\n{tags}")
 
 
 def upload(slug, date, video):
@@ -186,7 +197,7 @@ def channel_id():
     raise RuntimeError("no Instagram channel in Buffer")
 
 
-def schedule(text, url, due):
+def schedule(text, url, due, thumb_ms=None, title=None):
     ch, org = channel_id()
     iso = due.isoformat()
     try:  # re-run guard: never schedule two posts at the same minute
@@ -199,12 +210,23 @@ def schedule(text, url, due):
                 return {"id": e["node"]["id"], "skipped": True}
     except Exception as ex:  # noqa
         log("duplicate check failed (continuing):", repr(ex))
-    q = ('mutation { createPost(input: { text: %s, channelId: "%s", schedulingType: automatic, mode: customScheduled, dueAt: "%s", '
-         'assets: [{ video: { url: "%s" } }], metadata: { instagram: { type: reel, shouldShareToFeed: true } } }) '
-         '{ ... on PostActionSuccess { post { id status dueAt } } ... on MutationError { message } } }') % (json.dumps(text), ch, iso, url)
-    r = gql(q)
-    log("buffer:", json.dumps(r)[:600])
-    d = (r.get("data") or {}).get("createPost") or {}
+    # first try with a chosen cover frame (the finished ranking, not the empty first frame) and a video title; if Buffer rejects
+    # that, schedule the plain post so a cosmetic option can never cost us the day's Reel
+    metas = []
+    if thumb_ms is not None:
+        metas.append(", metadata: { thumbnailOffset: %d%s }" % (thumb_ms, (", title: %s" % json.dumps(title)) if title else ""))
+    metas.append("")
+    r, d = None, {}
+    for m in metas:
+        q = ('mutation { createPost(input: { text: %s, channelId: "%s", schedulingType: automatic, mode: customScheduled, dueAt: "%s", '
+             'assets: [{ video: { url: "%s"%s } }], metadata: { instagram: { type: reel, shouldShareToFeed: true } } }) '
+             '{ ... on PostActionSuccess { post { id status dueAt } } ... on MutationError { message } } }') % (json.dumps(text), ch, iso, url, m)
+        r = gql(q)
+        log("buffer:", json.dumps(r)[:600])
+        d = (r.get("data") or {}).get("createPost") or {}
+        if "post" in d:
+            break
+        log("createPost refused with options, retrying plain:", m)
     if "post" not in d:
         raise RuntimeError(f"Buffer refused: {r}")
     return d["post"]
@@ -334,7 +356,7 @@ def main():
         return
     url = upload(slug, str(today), out)
     try:
-        post = schedule(text, url, due)
+        post = schedule(text, url, due, thumb_ms=max(0, int((dur - 5.3) * 1000)), title=(cfg["title1"] + " " + cfg["title2"]).title()[:90])
         if post.get("skipped"):
             raise RuntimeError("slot taken meanwhile")
     except Exception:
