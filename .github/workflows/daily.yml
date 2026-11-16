@@ -4,7 +4,7 @@ name: daily-reels
 # Makes 2 Top-10 race videos and schedules them in Buffer for 6 PM and 9 PM PKT.
 on:
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "23 1 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
