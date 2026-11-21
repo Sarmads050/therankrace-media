@@ -45,6 +45,9 @@ CAT_TAGS = {"military": "#military #defense", "economy": "#economy #gdp", "finan
             "trade": "#trade #exports", "tech": "#technology #tech", "climate": "#climate #environment", "industry": "#industry #business",
             "health": "#health #healthcare", "transport": "#transport #travel", "food": "#food #agriculture"}
 SLOT_HOUR = {1: 18, 2: 21}
+# "countdown" = #10 -> #1 reveal (~27 s, big readable cards); "race" = the old 43 s bar race. Switch with the env var REEL_FORMAT.
+REEL_FORMAT = os.environ.get("REEL_FORMAT", "countdown")
+META = {}
 
 
 def log(*a):
@@ -105,7 +108,12 @@ def render(slug, cfg, date, out):
     assert os.path.exists(cfgp)
     env = dict(os.environ, RACE_CFG=cfgp)
     os.makedirs("work", exist_ok=True)
-    run([sys.executable, "-I", os.path.join("pipeline", "bar_race_gen.py"), out, os.path.join("work", slug + "_race"), "--fps", "60"], env=env)
+    script = "countdown_gen.py" if REEL_FORMAT == "countdown" else "bar_race_gen.py"
+    run([sys.executable, "-I", os.path.join("pipeline", script), out, os.path.join("work", slug + "_race"), "--fps", "60"], env=env)
+    try:
+        META[slug] = json.load(open(out + ".meta.json"))
+    except Exception:  # noqa
+        META[slug] = {}
     p = subprocess.run([FFMPEG, "-hide_banner", "-i", out, "-af", "volumedetect", "-f", "null", "-"], capture_output=True, text=True)
     t = p.stderr
     m = re.search(r"Duration: (\d+):(\d+):([\d.]+)", t)
@@ -145,8 +153,25 @@ def caption(slug, cfg):
     topic_tags = TAGS.get(slug) or CAT_TAGS.get(PK.cat(slug), "#economy #data")
     ctags = ["#pakistan", "#" + re.sub(r"[^a-z]", "", first.lower())]
     tags = ["#top10"] + topic_tags.split()[:2] + ctags + ["#barchartrace", "#worldranking"]
-    tags = " ".join(dict.fromkeys(tags))
     src = cfg["source"].split(" (updated")[0]
+    if REEL_FORMAT == "countdown":
+        # a countdown must not give away the answer: no #1 in the caption and no leader hashtag
+        pk = cfg.get("meta", {}).get("hl_rank")
+        if pk and pk <= 10:
+            hook = f"Pakistan is in the Top 10 for {what}! Can you guess its rank? 🇵🇰"
+        elif pk:
+            hook = f"Top 10 countries by {what}: where is Pakistan? Can you guess #1? 👀"
+        else:
+            hook = f"Top 10 countries by {what}: can you guess #1? 👀"
+        body = re.sub(r"\s*\d{4}-\d{4}\s*$", "", title).strip()
+        qs = ["Comment your guess for #1 before the end 👇", "Was Pakistan higher or lower than you thought? Tell us 👇",
+              "Which country surprised you most? Comment below 👇"]
+        q = qs[(int(time.time() // 86400) + len(slug)) % len(qs)]
+        tags = ["#top10"] + topic_tags.split()[:2] + ["#pakistan", "#countries", "#worldranking", "#facts"]
+        tags = " ".join(dict.fromkeys(tags))
+        return (f"{hook}\n\n{body}: the {y1} ranking, countdown from #10 to #1.\n\n{q}{ur}\n\n"
+                f"🔖 Save this and send it to a friend.\nFollow @therankrace for a new Top 10 world ranking every day.\n\n{src}\n\n{tags}")
+    tags = " ".join(dict.fromkeys(tags))
     return (f"{hook}\n\n{title}: {first} #1, {second} #2 in {y1}.\n\n{q}{ur}\n\n"
             f"🔖 Save this and send it to a friend.\nFollow @therankrace for a new Top 10 world ranking every day.\n\n{src}\n\n{tags}")
 
@@ -356,7 +381,8 @@ def main():
         return
     url = upload(slug, str(today), out)
     try:
-        post = schedule(text, url, due, thumb_ms=max(0, int((dur - 5.3) * 1000)), title=(cfg["title1"] + " " + cfg["title2"]).title()[:90])
+        thumb = META.get(slug, {}).get("cover_ms") or max(0, int((dur - 5.3) * 1000))
+        post = schedule(text, url, due, thumb_ms=thumb, title=(cfg["title1"] + " " + re.sub(r"\s*\d{4}-\d{4}$", "", cfg["title2"])).title()[:90])
         if post.get("skipped"):
             raise RuntimeError("slot taken meanwhile")
     except Exception:

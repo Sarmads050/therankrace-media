@@ -82,6 +82,15 @@ def interest(slug):
     return s, why
 
 
+# Everyday appeal of the subject itself (2026-11-21). Our first 13 Reels: abstract technical rankings (methane, nitrous oxide, aid, rural
+# population) got ~100-150 views each. People click on money, power, daily life and rivalries they already know.
+APPEAL = {"gdppc": 1.35, "military": 1.3, "lifeexp": 1.2, "airpax": 1.2, "extdebt": 1.15, "exports": 1.15, "co2": 1.1, "fertility": 1.1,
+          "imports": 1.05, "fdiin": 1.0, "healthpc": 1.0, "ictexp": 0.8, "hightech": 0.9, "elecpc": 0.9, "co2pc": 0.9, "ghg": 0.8,
+          "forest": 0.8, "bigcity": 0.8, "pop65": 0.8, "n2o": 0.5, "methane": 0.55, "aqua": 0.55, "royalty": 0.55, "landlines": 0.5,
+          "debtservice": 0.7, "servimp": 0.6, "servexp": 0.7, "fdiout": 0.7, "patents": 0.7, "journals": 0.7, "primary": 0.6, "workage": 0.7,
+          "mcity": 0.7, "airfreight": 0.7, "water": 0.7, "agland": 0.7, "cereal": 0.85, "fish": 0.8}
+
+
 def rank_topics(unused, recent, fb=None):
     """-> list of (slug, final_score, explanation), best first. recent = slugs posted lately, newest first."""
     fb = fb or {}
@@ -93,8 +102,10 @@ def rank_topics(unused, recent, fb=None):
         except Exception as e:  # noqa  no cached data -> neutral score
             base, why = 20.0, [f"no cached data ({e.__class__.__name__})"]
         c = cat(slug)
-        mult = PRIOR.get(c, 1.0)
+        mult = PRIOR.get(c, 1.0) * APPEAL.get(slug, 1.0)
         score = (30 + base) * mult
+        if APPEAL.get(slug, 1.0) != 1.0:
+            why.append(f"appeal x{APPEAL[slug]:.2f}")
         if c in fb:
             score *= fb[c]
             why.append(f"audience x{fb[c]:.2f}")
