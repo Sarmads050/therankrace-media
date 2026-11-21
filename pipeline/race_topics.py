@@ -22,7 +22,11 @@ SHORT = {"Russian Federation": "Russia", "United States": "USA", "United Kingdom
          "Kyrgyz Republic": "Kyrgyzstan", "Slovak Republic": "Slovakia", "Congo, Rep.": "Congo", "Sint Maarten (Dutch part)": "Sint Maarten",
          "Virgin Islands (U.S.)": "US Virgin Islands", "Naoero": "Nauru", "Cote d'Ivoire": "Ivory Coast", "Czechia": "Czechia",
          "St. Kitts and Nevis": "St Kitts", "St. Lucia": "St Lucia", "Trinidad and Tobago": "Trinidad"}
-EXCLUDE = {"CHI"}  # Channel Islands: no flag, not a country people know
+# Channel Islands (no flag) + tiny territories / micro-states: "richest per person" or "longest life" topped by Monaco, Cayman Islands or
+# Isle of Man is not what viewers expect (they expect Switzerland, Norway, Singapore) and nobody relates to them
+EXCLUDE = {"CHI", "MCO", "SMR", "LIE", "CYM", "IMN", "BMU", "PYF", "AND", "FRO", "GRL", "ABW", "CUW", "SXM", "MAF", "VGB", "TCA", "NCL",
+           "GUM", "ASM", "MNP", "VIR", "KNA", "DMA", "PLW", "MHL", "FSM", "TUV", "NRU", "GIB", "SYC", "ATG", "GRD", "LCA", "VCT", "BRB",
+           "BHS"}
 INDICATORS = {"pop": "SP.POP.TOTL", "gdp": "NY.GDP.MKTP.CD"}
 
 
