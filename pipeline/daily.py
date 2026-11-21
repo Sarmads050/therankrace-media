@@ -120,7 +120,7 @@ def render(slug, cfg, date, out):
     dur = int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3))
     mv = re.search(r"mean_volume: (-?[\d.]+) dB", t)
     assert "1080x1920" in t and " 60 fps" in t, "bad video format"
-    assert 25 <= dur <= 119.5, f"bad duration {dur}"
+    assert (90 if REEL_FORMAT == "countdown" else 25) <= dur <= 119.5, f"bad duration {dur}"  # owner's rule: countdown >= 90 s, f"bad duration {dur}"
     assert mv and -24 <= float(mv.group(1)) <= -9, f"bad audio level {mv and mv.group(1)}"
     log(f"verified {out}: {dur:.1f}s mean {mv.group(1)} dB")
     return dur

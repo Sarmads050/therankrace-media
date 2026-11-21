@@ -108,20 +108,23 @@ PK_VAL = SER[HL][LAST] if HL in SER and SER[HL][LAST] > 0 else META.get("hl_valu
 PK_CARD = (not PK_IN) and PK_RANK is not None and PK_VAL is not None
 
 # ------------------------------------------------------------------ timeline
-INTRO = 2.2
-DUR = {r: 1.7 for r in range(10, 3, -1)}
-DUR.update({3: 2.3, 2: 2.7, 1: 4.0})
+# Owner's rule (2026-11-21): relaxing music and the video must be AT LEAST 90 s (max 2 min). Slow cards with a history line
+# that draws itself fill the time with real information instead of padding.
+INTRO = 4.0
+DUR = {r: 7.5 for r in range(10, 3, -1)}
+DUR.update({3: 8.5, 2: 9.5, 1: 12.0})
+PK_DUR, CTA_DUR = 8.0, 6.0
 S = {}
 _t = INTRO
 for _r in range(10, 0, -1):
     S[_r] = _t
     _t += DUR[_r]
 T_PK = _t
-_t += 2.8 if PK_CARD else 0.0
+_t += PK_DUR if PK_CARD else 0.0
 T_CTA = _t
-TOTAL = T_CTA + 3.4
-assert TOTAL <= 119.5
-COVER_S = S[1] + 1.9  # best cover frame: the #1 card with the whole board filled
+TOTAL = T_CTA + CTA_DUR
+assert 90.0 <= TOTAL <= 119.5, TOTAL
+COVER_S = S[1] + 2.0  # best cover frame: the #1 card with the whole board filled
 
 
 def title_parts():
@@ -300,12 +303,53 @@ def chip_text(canvas, dr, text, col, y, a):
     f = F("labb", 34)
     w = int(dr.textlength(text, font=f)) + 56
     w = min(w, 800)
+    if a < 0.03:
+        return
     cs = card(("chip", w), w, 56, 28, (18, 22, 62), edge=col, ew=3, sh_alpha=0, gloss=False)
     R.paste_sub(canvas, cs[0], CX - w / 2 - cs[1], y - 28 - cs[1], a)
     dr.text((CX, y), text, font=f, fill=R.lerpc((20, 24, 70), col, a), anchor="mm")
 
 
-def reveal_card(canvas, dr, iso, rank, value, u, kind="rank", t=0.0):
+def history(canvas, dr, iso, a, prog, col):
+    """the country's own history line, drawing itself from the first year to the last (phase 2 of a card)"""
+    ys = [(YEARS[i], SER[iso][i]) for i in range(NY) if SER[iso][i] > 0]
+    if len(ys) < 3:
+        return
+    x0, x1, yt, yb = 110, 850, 786, 866
+    vmin, vmax = min(v for _, v in ys), max(v for _, v in ys)
+    span = max(vmax - vmin, vmax * 0.05, 1e-9)
+    pts = [(x0 + (x1 - x0) * k / (len(ys) - 1), yb - (yb - yt) * (v - vmin) / span) for k, (_, v) in enumerate(ys)]
+    fpos = prog * (len(ys) - 1)
+    i = int(fpos)
+    head = pts[i] if i >= len(ys) - 1 else (pts[i][0] + (pts[i + 1][0] - pts[i][0]) * (fpos - i), pts[i][1] + (pts[i + 1][1] - pts[i][1]) * (fpos - i))
+    vnow = ys[i][1] if i >= len(ys) - 1 else ys[i][1] + (ys[i + 1][1] - ys[i][1]) * (fpos - i)
+    ynow = ys[min(i, len(ys) - 1)][0]
+    ss = 2
+    W, H = 800, 170
+    ox, oy = 80, 730
+    im = Image.new("RGBA", (W * ss, H * ss), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    d.line([((x0 - ox) * ss, (yb + 6 - oy) * ss), ((x1 - ox) * ss, (yb + 6 - oy) * ss)], fill=(70, 84, 150, 255), width=2 * ss)
+    seg = pts[:i + 1] + [head]
+    if len(seg) >= 2:
+        poly = [((x - ox) * ss, (y - oy) * ss) for x, y in seg]
+        area = poly + [((seg[-1][0] - ox) * ss, (yb + 6 - oy) * ss), ((seg[0][0] - ox) * ss, (yb + 6 - oy) * ss)]
+        d.polygon(area, fill=tuple(col) + (46,))
+        d.line(poly, fill=GOLD + (255,), width=6 * ss, joint="curve")
+    hx, hy = (head[0] - ox) * ss, (head[1] - oy) * ss
+    d.ellipse([hx - 16 * ss, hy - 16 * ss, hx + 16 * ss, hy + 16 * ss], fill=GOLD + (70,))
+    d.ellipse([hx - 9 * ss, hy - 9 * ss, hx + 9 * ss, hy + 9 * ss], fill=(255, 244, 190, 255), outline=GOLD + (255,), width=3 * ss)
+    im = im.resize((W, H), Image.LANCZOS)
+    if a < 0.99:
+        im.putalpha(im.getchannel("A").point([int(v * a) for v in range(256)]))
+    canvas.paste(im, (ox, oy), im)
+    dr = ImageDraw.Draw(canvas)
+    T.TX(dr, (CX, 750), f"{ynow}:  {fmt(vnow)}", "num", fit(dr, f"{ynow}:  {fmt(vnow)}", "num", 40, 780), T.mix(GOLD, a), anchor="mm", shadow=False)
+    dr.text((x0, yb + 26), str(ys[0][0]), font=F("lab", 22), fill=T.mix(MUTED, a), anchor="lm")
+    dr.text((x1, yb + 26), str(ys[-1][0]), font=F("lab", 22), fill=T.mix(MUTED, a), anchor="rm")
+
+
+def reveal_card(canvas, dr, iso, rank, value, u, kind="rank", t=0.0, dur=7.5):
     """the BIG card for one country; u = seconds since it appeared"""
     hi = iso == HL
     edge = GREEN if hi else (GOLD if rank == 1 else COL.get(iso, GOLD))
@@ -337,28 +381,34 @@ def reveal_card(canvas, dr, iso, rank, value, u, kind="rank", t=0.0):
     na = R.ease((u - 0.15) / 0.25)
     T.TX(dr, (CX, 688), nm, "title", nsz, T.mix(GOLD if hi else TXT, na), anchor="mm", stroke=3)
     # full number counts up
-    vs = value * R.ease((u - 0.2) / 0.9)
-    txt = fmt(vs if u < 1.1 else value)
+    has_hist = iso in SER and sum(1 for x in SER[iso] if x > 0) > 4
+    out = R.ease((u - 3.2) / 0.5) if has_hist else 0.0  # phase 2: value + chip fade out, the history line takes over
+    vs = value * R.ease((u - 0.2) / 2.2)  # slow, calm count-up
+    txt = fmt(vs if u < 2.4 else value)
     vsz = fit(dr, fmt(value), "num", 76, 780)
-    T.TX(dr, (CX, 772), txt, "num", vsz, T.mix(GOLD, R.ease((u - 0.2) / 0.25)), anchor="mm", stroke=2)
+    if out < 0.97:
+        T.TX(dr, (CX, 772), txt, "num", vsz, T.mix(GOLD, R.ease((u - 0.2) / 0.25) * (1 - out)), anchor="mm", stroke=2)
     # story chip
     if kind == "pk":
-        chip_text(canvas, dr, f"WHERE IS PAKISTAN? NUMBER {rank}", GREEN, 852, R.ease((u - 0.5) / 0.3))
+        chip_text(canvas, dr, f"WHERE IS PAKISTAN? NUMBER {rank}", GREEN, 852, R.ease((u - 0.5) / 0.3) * (1 - out))
     else:
         txt2, c2 = STORY[iso]
-        chip_text(canvas, dr, txt2, c2, 852, R.ease((u - 0.65) / 0.3))
+        chip_text(canvas, dr, txt2, c2, 852, R.ease((u - 0.65) / 0.3) * (1 - out))
+    if has_hist and u > 3.3:
+        total_draw = max(2.0, dur - 4.9)
+        history(canvas, dr, iso, R.ease((u - 3.4) / 0.5), min(1.0, max(0.0, (u - 4.0) / total_draw)), edge)
     # top band pills
     if kind == "pk" or hi:
         pill(canvas, "PAKISTAN IS HERE!" if kind != "pk" else "YOUR COUNTRY", 368, R.ease((u - 0.1) / 0.3), 0.7 + 0.3 * R.ease_back((u - 0.1) / 0.4))
     elif rank == 1:
         pill(canvas, "THE WINNER!", 368, R.ease((u - 0.1) / 0.3), 0.7 + 0.3 * R.ease_back((u - 0.1) / 0.4))
     # sparkles for the winner
-    if rank == 1 and kind == "rank" and u < 1.6:
+    if rank == 1 and kind == "rank" and u < 3.0:
         rng = np.random.default_rng(7)
         for j in range(34):
             ang = rng.random() * 6.283
             sp_ = 160 + rng.random() * 330
-            d = sp_ * R.ease(u / 1.4)
+            d = sp_ * R.ease(u / 2.6)
             r_ = 3 + int(rng.random() * 5)
             x, y = 640 + math.cos(ang) * d, 500 + math.sin(ang) * d * 0.8
             dot = R.dot(r_, 2)
@@ -415,10 +465,10 @@ def render_frame(k):
     elif t >= T_CTA:
         cta_card(canvas, dr, t - T_CTA)
     elif PK_CARD and t >= T_PK:
-        reveal_card(canvas, dr, HL, PK_RANK, PK_VAL, t - T_PK, "pk", t)
+        reveal_card(canvas, dr, HL, PK_RANK, PK_VAL, t - T_PK, "pk", t, PK_DUR)
     else:
         r = next(q for q in range(10, 0, -1) if S[q] <= t < S[q] + DUR[q])
-        reveal_card(canvas, dr, TOP[r - 1], r, SER[TOP[r - 1]][LAST], t - S[r], "rank", t)
+        reveal_card(canvas, dr, TOP[r - 1], r, SER[TOP[r - 1]][LAST], t - S[r], "rank", t, DUR[r])
     dr = ImageDraw.Draw(canvas)
     lines, sfnt, ssz = source_lines(dr)
     for q, ln in enumerate(lines):
@@ -441,20 +491,17 @@ def render(out_video, work, fps):
     init_worker(fps)
     n = int(round(TOTAL * FPS))
     music = f"{work}/music_countdown.wav"
-    from music_race import make_race_music
-    bounds = [0.0, 4.8, 9.4, S[3], S[1], TOTAL]  # drops at #9, #6, #3 and the #1 reveal
-    bpms = [120, 124, 128, 132, 120]
-    bars = [max(3, round((bounds[i + 1] - bounds[i]) * bpms[i] / 240.0)) for i in range(5)]
-    print("music bounds", [round(b, 2) for b in bounds], "bars", bars,
-          "tempos", [round(bars[i] * 240 / (bounds[i + 1] - bounds[i])) for i in range(5)], flush=True)
-    make_race_music(bounds, bars, music)
+    from music_chill import make_chill_music  # relaxing ambient music (owner's request), opens up at the #1 reveal
+    make_chill_music(TOTAL, S[1], music)
+    print("music: chill ambient", round(TOTAL, 1), "s, swell at", round(S[1], 1), flush=True)
     cmd = [FFMPEG, "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{VW}x{VH}", "-r", str(FPS), "-i", "-", "-i", music,
-           "-af", "volume=0.5,alimiter=limit=0.8", "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p",
+           "-af", "alimiter=limit=0.9", "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p",
            "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "-t", f"{TOTAL:.3f}", out_video]
     log = open(f"{work}/ffmpeg_countdown.log", "wb")
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=log)
     ctx = mp.get_context("spawn")
-    with ctx.Pool(max(1, os.cpu_count() or 2), initializer=init_worker, initargs=(fps,)) as pool:
+    workers = max(1, min(os.cpu_count() or 2, int(os.environ.get("RENDER_WORKERS", "99"))))  # fewer on a busy laptop
+    with ctx.Pool(workers, initializer=init_worker, initargs=(fps,)) as pool:
         for i, b in enumerate(pool.imap(render_frame, range(n), chunksize=6)):
             proc.stdin.write(b)
             if i % 300 == 0:
