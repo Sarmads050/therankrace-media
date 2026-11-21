@@ -46,7 +46,7 @@ CAT_TAGS = {"military": "#military #defense", "economy": "#economy #gdp", "finan
             "health": "#health #healthcare", "transport": "#transport #travel", "food": "#food #agriculture"}
 SLOT_HOUR = {1: 18, 2: 21}
 # "countdown" = #10 -> #1 reveal (~27 s, big readable cards); "race" = the old 43 s bar race. Switch with the env var REEL_FORMAT.
-REEL_FORMAT = os.environ.get("REEL_FORMAT", "countdown")
+REEL_FORMAT = os.environ.get("REEL_FORMAT", "race")  # owner (2026-11-21) wants the bar-race format back
 META = {}
 
 
@@ -120,7 +120,7 @@ def render(slug, cfg, date, out):
     dur = int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3))
     mv = re.search(r"mean_volume: (-?[\d.]+) dB", t)
     assert "1080x1920" in t and " 60 fps" in t, "bad video format"
-    assert (90 if REEL_FORMAT == "countdown" else 25) <= dur <= 119.5, f"bad duration {dur}"  # owner's rule: countdown >= 90 s, f"bad duration {dur}"
+    assert 90 <= dur <= 119.5, f"bad duration {dur}"  # owner's rule: every video 90-119 s, f"bad duration {dur}"
     assert mv and -24 <= float(mv.group(1)) <= -9, f"bad audio level {mv and mv.group(1)}"
     log(f"verified {out}: {dur:.1f}s mean {mv.group(1)} dB")
     return dur

@@ -133,7 +133,7 @@ _add("healthpc", "SH.XPD.CHEX.PC.CD", "TOP 10 COUNTRIES BY", "HEALTH SPENDING PE
      "health spending per person", "current health expenditure per capita, current US dollars", 2000)
 
 
-TARGET = 36.0  # seconds of race motion. Real data (2026-11-16): 94 s Reels were watched only ~25 s on average (27%) -> shorter = more completion = more reach
+TARGET = 85.0  # seconds of race motion (+6.8 s tail = ~92 s). Owner's rule (2026-11-21): every video is at least 90 s and max 2 min
 CAP_GAP_S = 4.4  # at least this many seconds between two captions (reading time)
 
 
@@ -288,7 +288,7 @@ def pace_for(events, y0, y1, target, slow_ratio=0.65, lead=1.0, lag=2.0):
         else:
             merged.append([a, b])
     Z = sum(b - a for a, b in merged)
-    fast = min(2.4, max(0.3, ((y1 - y0 - Z) + Z / slow_ratio) / target))
+    fast = min(2.4, max(0.08, ((y1 - y0 - Z) + Z / slow_ratio) / target))
     slow = fast * slow_ratio
     segs, cur = [], float(y0)
     if merged and merged[0][0] > y0 + 2.0:

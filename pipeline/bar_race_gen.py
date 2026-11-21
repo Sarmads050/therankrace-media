@@ -382,15 +382,11 @@ def render(out_video, work, fps):
     init_worker(fps)
     n = int(round(TOTAL * FPS))
     music = f"{work}/music_race_gen.wav"
-    from music_race import make_race_music
-    bounds = [0.0] + [round(h, 3) for h in HITS] + [TOTAL]
-    bpms = [102, 111, 116, 120, 116]
-    bars = [max(3, round((bounds[i + 1] - bounds[i]) * bpms[i] / 240.0)) for i in range(5)]
-    print("music bounds", bounds, "bars", bars, "tempos", [round(bars[i] * 240 / (bounds[i + 1] - bounds[i])) for i in range(5)],
-          flush=True)
-    make_race_music(bounds, bars, music)
+    from music_chill import make_chill_music  # relaxing ambient music (owner's request 2026-11-21)
+    make_chill_music(TOTAL, T_MOTION - 6.0 if T_MOTION > 20 else TOTAL * 0.7, music)
+    print("music: chill ambient", round(TOTAL, 1), "s", flush=True)
     cmd = [FFMPEG, "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{VW}x{VH}", "-r", str(FPS), "-i", "-", "-i", music,
-           "-af", "volume=0.5,alimiter=limit=0.8", "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p",
+           "-af", "alimiter=limit=0.9", "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p",
            "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "-t", f"{TOTAL:.3f}", out_video]
     log = open(f"{work}/ffmpeg_race_gen.log", "wb")
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=log)
