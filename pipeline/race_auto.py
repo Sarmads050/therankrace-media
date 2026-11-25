@@ -227,7 +227,7 @@ def build(slug, target=TARGET):
     if hl_rank:
         pills.append(dict(at={"tail": 0.4}, dur=3.0, text=f"PAKISTAN IS #{hl_rank} TODAY"))
     # hook in the first seconds: a question people want to answer (and answer in the comments)
-    pills.insert(0, dict(at=y0, dur=3.0, text=f"CAN YOU GUESS THE #1 IN {y1}?"))
+    pills.insert(0, dict(at=y0, dur=3.4, text=(f"WHERE WILL PAKISTAN RANK IN {y1}?" if hl_rank else f"CAN YOU GUESS THE #1 IN {y1}?")))
     ev_years = [p["at"] for p in pills if not isinstance(p["at"], dict) and p["at"] != y0] or [int((y0 + y1) / 2)]
     hits = pick_hits(ev_years, y0, y1)
     ents = ds.ever()

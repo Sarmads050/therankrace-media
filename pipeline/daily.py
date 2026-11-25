@@ -139,9 +139,10 @@ def caption(slug, cfg):
     if pr and pr <= 10:
         hooks.append(f"Pakistan is number {pr} in the world for {what}! 🇵🇰")
     elif pr:
-        hooks.append(f"{first} is number 1 in {what}... but where is Pakistan? 🇵🇰")
-    hooks.append(f"{first} vs {second}: who wins the race for {what}? Watch {y0} to {y1} 👀")
-    hook = hooks[0] if (pr and pr <= 10) else hooks[(int(time.time() // 86400)) % len(hooks)]
+        hooks.append(f"Where is Pakistan in the world for {what}? Watch {y0} to {y1} 🇵🇰")
+    else:
+        hooks.append(f"Can you guess the No.1 country for {what}? Watch {y0} to {y1} 👀")
+    hook = hooks[0]
     title = (cfg["title1"] + " " + cfg["title2"]).title().replace("Co2", "CO2").replace("Gdp", "GDP")
     # Instagram SEO: the first line (what people see before "more") is the search keyword + a hook; 5-6 focused hashtags (not 10);
     # a pointed question (comments), a save/share ask and a follow ask (the signals Instagram uses to suggest a Reel to new people)
@@ -151,7 +152,7 @@ def caption(slug, cfg):
     q = qs[(int(time.time() // 86400) + len(slug)) % len(qs)]
     ur = "\nPakistan ka number kya hai? Comment mein batayein 🇵🇰" if pr else ""
     topic_tags = TAGS.get(slug) or CAT_TAGS.get(PK.cat(slug), "#economy #data")
-    ctags = ["#pakistan", "#" + re.sub(r"[^a-z]", "", first.lower())]
+    ctags = ["#pakistan", "#countries"]  # no leader hashtag: it would spoil the ending
     tags = ["#top10"] + topic_tags.split()[:2] + ctags + ["#barchartrace", "#worldranking"]
     src = cfg["source"].split(" (updated")[0]
     if REEL_FORMAT == "countdown":
@@ -172,7 +173,7 @@ def caption(slug, cfg):
         return (f"{hook}\n\n{body}: the {y1} ranking, countdown from #10 to #1.\n\n{q}{ur}\n\n"
                 f"🔖 Save this and send it to a friend.\nFollow @therankrace for a new Top 10 world ranking every day.\n\n{src}\n\n{tags}")
     tags = " ".join(dict.fromkeys(tags))
-    return (f"{hook}\n\n{title}: {first} is No.1, {second} is No.2 in {y1}.\n\n{q}{ur}\n\n"
+    return (f"{hook}\n\n{title}: the full race, {y0} to {y1}. Watch till the end.\n\n{q}{ur}\n\n"
             f"🔖 Save this and send it to a friend.\nFollow @therankrace for a new Top 10 world ranking every day.\n\n{src}\n\n{tags}")
 
 
