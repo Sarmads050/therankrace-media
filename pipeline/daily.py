@@ -145,7 +145,7 @@ def caption(slug, cfg):
     title = (cfg["title1"] + " " + cfg["title2"]).title().replace("Co2", "CO2").replace("Gdp", "GDP")
     # Instagram SEO: the first line (what people see before "more") is the search keyword + a hook; 5-6 focused hashtags (not 10);
     # a pointed question (comments), a save/share ask and a follow ask (the signals Instagram uses to suggest a Reel to new people)
-    qs = [f"Which country will be #1 in {y1 + 15}? Comment your guess 👇",
+    qs = [f"Which country will be No.1 in {y1 + 15}? Comment your guess 👇",
           f"Which country surprised you most? Tell us in the comments 👇",
           f"Is this what you expected? Comment your country and its rank 👇"]
     q = qs[(int(time.time() // 86400) + len(slug)) % len(qs)]
@@ -172,7 +172,7 @@ def caption(slug, cfg):
         return (f"{hook}\n\n{body}: the {y1} ranking, countdown from #10 to #1.\n\n{q}{ur}\n\n"
                 f"🔖 Save this and send it to a friend.\nFollow @therankrace for a new Top 10 world ranking every day.\n\n{src}\n\n{tags}")
     tags = " ".join(dict.fromkeys(tags))
-    return (f"{hook}\n\n{title}: {first} #1, {second} #2 in {y1}.\n\n{q}{ur}\n\n"
+    return (f"{hook}\n\n{title}: {first} is No.1, {second} is No.2 in {y1}.\n\n{q}{ur}\n\n"
             f"🔖 Save this and send it to a friend.\nFollow @therankrace for a new Top 10 world ranking every day.\n\n{src}\n\n{tags}")
 
 
