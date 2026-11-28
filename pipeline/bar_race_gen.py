@@ -274,14 +274,12 @@ def fit_font(dr, text, name, size, width):
 
 def static_layer(canvas):
     cards = {"date": R.soft_card(500, 104, 36, (46, 36, 100), edge=GOLD),
-             "band": R.soft_card(960, 112, 36, (96, 72, 10, 150), edge=GOLD, sh_alpha=0, gloss=False),
              "timeline": R.soft_card(840, 112, 30, (24, 30, 76)),
              "caption": R.soft_card(840, 124, 34, CARD)}
     dr = ImageDraw.Draw(canvas)
     T.TX(dr, (VW / 2, 198), CFG["title1"], "title", fit_font(dr, CFG["title1"], "title", 68, 940), TXT, anchor="mm", stroke=3)
     T.TX(dr, (VW / 2, 262), CFG["title2"], "title", fit_font(dr, CFG["title2"], "title", 54, 940), GOLD, anchor="mm")
     R.paste_card(canvas, 290, 300, cards["date"])
-    R.paste_card(canvas, 60, YTOP - 56, cards["band"])
     R.paste_card(canvas, 60, TL_Y - 56, cards["timeline"])
     R.paste_card(canvas, 60, 1500, cards["caption"])
     dr = ImageDraw.Draw(canvas)
