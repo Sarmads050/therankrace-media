@@ -33,12 +33,12 @@ R.BAR_H = BAR_H
 FPS = int(os.environ.get("BARRACE_FPS", "60"))
 # INSTAGRAM SAFE ZONE (phone check 2026-11-16): the Reels header covers y<160, the caption/profile overlay y>1650, the like/comment/share
 # icons x>900 for y 930-1600, and phones crop ~44 px at each side. Everything that matters stays inside x 60-900 (y 160-1640).
-X0, PITCH, YTOP = 216, 86, 480
+X0, PITCH, YTOP = 216, 95, 474
 SAFE_R = 900
 NUM_R = 896  # numbers are written in full, right-aligned in one column that ends here
 FLAG_SC = 0.70  # smaller flag badges
 CX = 480  # centre of the safe column (60-900)
-TL_Y = 1436
+TL_Y = 1432
 MAXLEN = (NUM_R - X0) / 1.05 - 2  # the bar may use the whole row; the number sits on the line above it
 
 CFG = json.load(open(os.environ["RACE_CFG"], encoding="utf-8"))
@@ -274,21 +274,21 @@ def fit_font(dr, text, name, size, width):
 
 def static_layer(canvas):
     cards = {"date": R.soft_card(500, 104, 36, (46, 36, 100), edge=GOLD),
-             "timeline": R.soft_card(840, 112, 30, (24, 30, 76)),
+             "timeline": R.soft_card(840, 92, 30, (24, 30, 76)),
              "caption": R.soft_card(840, 124, 34, CARD)}
     dr = ImageDraw.Draw(canvas)
     T.TX(dr, (VW / 2, 198), CFG["title1"], "title", fit_font(dr, CFG["title1"], "title", 68, 940), TXT, anchor="mm", stroke=3)
     T.TX(dr, (VW / 2, 262), CFG["title2"], "title", fit_font(dr, CFG["title2"], "title", 54, 940), GOLD, anchor="mm")
     R.paste_card(canvas, 290, 300, cards["date"])
-    R.paste_card(canvas, 60, TL_Y - 56, cards["timeline"])
+    R.paste_card(canvas, 60, TL_Y - 40, cards["timeline"])
     R.paste_card(canvas, 60, 1500, cards["caption"])
     dr = ImageDraw.Draw(canvas)
     span = 740.0
     for yr in range(YEARS[0], YEARS[-1] + 1, 10):
         if (YEARS[-1] - yr) * span / (N - 1) < 70 and yr != YEARS[-1]:  # too close to the last label: skip it (no overlap)
             continue
-        dr.text((110 + span * (yr - YEARS[0]) / (N - 1), TL_Y + 36), str(yr), font=F("lab", 24), fill=MUTED, anchor="mm")
-    dr.text((110 + span, TL_Y + 36), str(YEARS[-1]), font=F("lab", 24), fill=MUTED, anchor="mm")
+        dr.text((110 + span * (yr - YEARS[0]) / (N - 1), TL_Y + 32), str(yr), font=F("lab", 24), fill=MUTED, anchor="mm")
+    dr.text((110 + span, TL_Y + 32), str(YEARS[-1]), font=F("lab", 24), fill=MUTED, anchor="mm")
     src = CFG["source"]
     for ssz in (18, 16, 14):  # source line: at most 2 lines inside the safe column
         sfnt = F("small", ssz)
@@ -350,7 +350,7 @@ def render_frame(k):
                 sp2.putalpha(sp2.getchannel("A").point([int(v * a) for v in range(256)]))
             if sp2.width > 830:  # never wider than the safe column
                 sp2 = sp2.resize((830, max(2, int(sp2.height * 830 / sp2.width))), Image.BICUBIC)
-            canvas.paste(sp2, (int(CX - sp2.width / 2), int(1340 - sp2.height / 2)), sp2)
+            canvas.paste(sp2, (int(CX - sp2.width / 2), int(TL_Y - sp2.height / 2)), sp2)
     dr = ImageDraw.Draw(canvas)
     for j, (c0, text) in enumerate(CAPS):
         c1 = CAPS[j + 1][0] if j + 1 < len(CAPS) else TOTAL
